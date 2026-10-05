@@ -5,3 +5,6 @@ src-tauri/target
 Thumbs.db
 *.tmp
 node_modules/
+vendor-scratch/
+*.pyc
+__pycache__/

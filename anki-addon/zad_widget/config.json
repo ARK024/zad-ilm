@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "mode": "interval",
+  "interval_minutes": 20,
+  "min_interval_minutes": 3,
+  "max_interval_minutes": 120,
+  "active_from": "08:00",
+  "active_to": "22:00",
+  "daily_cap": 0,
+  "deck": "",
+  "learning_priority": true,
+  "learning_min_gap_minutes": 1,
+  "pause_while_reviewing": true,
+  "snooze_minutes": 30,
+  "autoplay_audio": true,
+  "always_on_top": true,
+  "show_on_startup": false,
+  "corner": "bottom-right",
+  "width": 460,
+  "height": 540,
+  "font_size": 17,
+  "first_run_done": false
+}

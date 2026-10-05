@@ -29,10 +29,13 @@ function zadRender(s) {
   } else { window.scrollTo(0, 0); }
 }
 document.addEventListener("keydown", function (e) {
+  if (e.ctrlKey && (e.key === "+" || e.key === "=")) { e.preventDefault(); pycmd("zoom:in"); return; }
+  if (e.ctrlKey && e.key === "-") { e.preventDefault(); pycmd("zoom:out"); return; }
   if (e.ctrlKey || e.altKey || e.metaKey) return;
   if (e.key === " " || e.key === "Enter") { e.preventDefault(); pycmd("ans"); }
   else if (e.key >= "1" && e.key <= "4") { pycmd("ease:" + e.key); }
   else if (e.key === "Escape") { pycmd("close"); }
+  else if (e.key === "f" || e.key === "F") { e.preventDefault(); pycmd("toggle_expand"); }
 });
 </script>
 """

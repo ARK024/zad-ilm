@@ -63,6 +63,11 @@ class Controller:
         self.state["pos"] = [x, y]
         self.save_state()
 
+    def remember_size(self, w: int, h: int) -> None:
+        self.state["width"] = w
+        self.state["height"] = h
+        self.save_state()
+
     def reload_config(self) -> None:
         self.cfg = engine.merged_config(mw.addonManager.getConfig(ADDON_NAME))
         if self.widget:

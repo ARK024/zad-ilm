@@ -93,6 +93,10 @@ class SettingsDialog(QDialog):
         self.startup.setChecked(self.cfg["show_on_startup"])
         form.addRow(self.startup)
 
+        self.close_tray = QCheckBox("تشغيل أنكي في الخلفية (بجوار الساعة) عند إغلاق النافذة")
+        self.close_tray.setChecked(self.cfg.get("close_to_tray", True))
+        form.addRow(self.close_tray)
+
         self.corner = QComboBox()
         for label, val in (
             ("أسفل اليمين", "bottom-right"),
@@ -135,6 +139,7 @@ class SettingsDialog(QDialog):
                 "autoplay_audio": self.audio.isChecked(),
                 "always_on_top": self.top.isChecked(),
                 "show_on_startup": self.startup.isChecked(),
+                "close_to_tray": self.close_tray.isChecked(),
                 "corner": self.corner.currentData(),
                 "font_size": self.font.value(),
             }

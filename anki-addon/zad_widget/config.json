@@ -19,5 +19,6 @@
   "width": 460,
   "height": 540,
   "font_size": 17,
-  "first_run_done": false
+  "first_run_done": false,
+  "close_to_tray": true
 }

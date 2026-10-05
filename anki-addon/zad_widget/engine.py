@@ -48,6 +48,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "width": 460,
     "height": 540,
     "font_size": 17,
+    "close_to_tray": True,
     "first_run_done": False,
 }
 

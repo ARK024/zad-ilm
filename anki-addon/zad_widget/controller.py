@@ -37,6 +37,9 @@ class Controller:
         self.timer.timeout.connect(self.tick)
         self.menu = None
         self._act_pause = None
+        self.tray_icon = None
+        self._force_exit = False
+        self._orig_close_event = None
 
     # ------------------------------------------------------------------ الحالة
     def _load_state(self) -> dict:
@@ -66,9 +69,10 @@ class Controller:
             self.widget.apply_flags()
             self.widget.restyle()
 
-    # ------------------------------------------------------------------ دورة الحياة
     def start(self) -> None:
         self._build_menu()
+        self._setup_tray()
+        self._hook_close_event()
         self.timer.start(TICK_MS)
 
     def on_profile_open(self) -> None:
@@ -243,6 +247,76 @@ class Controller:
         a.triggered.connect(self.show_status)
         self.menu.addAction(a)
         mw.form.menuTools.addMenu(self.menu)
+
+    def _setup_tray(self) -> None:
+        if not hasattr(QSystemTrayIcon, "isSystemTrayAvailable") or not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+        self.tray_icon = QSystemTrayIcon(mw)
+        icon = mw.windowIcon()
+        if icon.isNull():
+            icon = QApplication.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogInfoView)
+        self.tray_icon.setIcon(icon)
+        self.tray_icon.setToolTip("زاد العلم — أنكي يعمل في الخلفية")
+
+        menu = QMenu()
+        a_show = QAction("إظهار نافذة أنكي", menu)
+        a_show.triggered.connect(self.open_main)
+        menu.addAction(a_show)
+
+        a_card = QAction("عرض بطاقة الآن (Ctrl+Alt+Z)", menu)
+        a_card.triggered.connect(self.show_now)
+        menu.addAction(a_card)
+
+        a_pause = QAction("إيقاف / استئناف الودجت", menu)
+        a_pause.triggered.connect(self.toggle_pause)
+        menu.addAction(a_pause)
+
+        menu.addSeparator()
+
+        a_settings = QAction("الإعدادات…", menu)
+        a_settings.triggered.connect(self.open_settings)
+        menu.addAction(a_settings)
+
+        menu.addSeparator()
+
+        a_quit = QAction("خروج نهائي من أنكي", menu)
+        a_quit.triggered.connect(self.force_exit)
+        menu.addAction(a_quit)
+
+        self.tray_icon.setContextMenu(menu)
+        self.tray_icon.activated.connect(self._on_tray_activated)
+        self.tray_icon.show()
+
+    def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
+            self.open_main()
+
+    def _hook_close_event(self) -> None:
+        if self._orig_close_event is not None:
+            return
+        self._orig_close_event = mw.closeEvent
+
+        def custom_close(event: QCloseEvent) -> None:
+            if self.cfg.get("close_to_tray", True) and not self._force_exit:
+                if mw.state == "profileManager":
+                    self._orig_close_event(event)
+                    return
+                event.ignore()
+                mw.hide()
+                tooltip("أنكي يعمل الآن في الخلفية بجوار الساعة لتذكيرك بالبطاقات على مدار اليوم", period=3500)
+            else:
+                self._orig_close_event(event)
+
+        mw.closeEvent = custom_close
+
+    def force_exit(self) -> None:
+        self._force_exit = True
+        if self.tray_icon:
+            self.tray_icon.hide()
+        mw.close()
 
     def _refresh_pause_label(self) -> None:
         if self._act_pause:

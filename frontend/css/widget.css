@@ -1,0 +1,267 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;600;700;900&display=swap');
+
+:root {
+  --bg-widget: rgba(13, 31, 25, 0.95);
+  --border-gold: rgba(245, 158, 11, 0.4);
+  --border-emerald: rgba(52, 211, 153, 0.3);
+  --text-main: #f3fbf7;
+  --text-gold: #fbbf24;
+  --text-emerald: #34d399;
+  --text-muted: #93b7a8;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Tajawal', sans-serif;
+  background: transparent;
+  color: var(--text-main);
+  direction: rtl;
+  text-align: right;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+.widget-frame {
+  height: 100vh;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.widget-window {
+  height: 100%;
+  background: var(--bg-widget);
+  border: 1px solid var(--border-gold);
+  border-radius: 18px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 16px rgba(245, 158, 11, 0.15);
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Drag Header */
+.widget-header {
+  height: 42px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: grab;
+  -webkit-app-region: drag;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.widget-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--text-emerald);
+  border: 1px solid var(--border-emerald);
+}
+
+.widget-due-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-gold);
+}
+
+.w-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  -webkit-app-region: no-drag;
+}
+
+.w-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.w-btn-close:hover {
+  background: rgba(239, 68, 68, 0.5);
+  color: #fff;
+}
+
+/* Body Content */
+.widget-body {
+  flex: 1;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+}
+
+.w-question-box {
+  margin-bottom: 12px;
+}
+
+.w-question-text {
+  font-family: 'Amiri', serif;
+  font-size: 20px;
+  line-height: 1.6;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Quiz Option in Widget */
+.w-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.w-opt-btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: right;
+}
+
+.w-opt-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--text-emerald);
+}
+
+.w-opt-btn.correct {
+  background: rgba(16, 185, 129, 0.3) !important;
+  border-color: #10b981 !important;
+  color: #6ee7b7 !important;
+}
+
+.w-opt-btn.wrong {
+  background: rgba(239, 68, 68, 0.3) !important;
+  border-color: #ef4444 !important;
+  color: #fca5a5 !important;
+}
+
+/* Flashcard Answer Box in Widget */
+.w-answer-box {
+  display: none;
+  background: rgba(16, 185, 129, 0.08);
+  border-right: 3px solid #10b981;
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-main);
+  margin: 10px 0;
+}
+
+.w-answer-box.active {
+  display: block;
+}
+
+.w-explanation-text {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Widget Bottom Footer Controls */
+.w-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.w-reveal-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.w-rating-grid {
+  display: none;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.w-rating-grid.active {
+  display: grid;
+}
+
+.w-rate-btn {
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.w-rate-again { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.w-rate-hard  { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.w-rate-good  { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.w-rate-easy  { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+
+/* Widget Cloze Deletion */
+.cloze {
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.cloze-hidden {
+  background: rgba(52, 211, 153, 0.25);
+  color: #34d399;
+  border: 1px dashed #34d399;
+}
+.cloze-revealed {
+  background: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+.cloze-inactive {
+  opacity: 0.9;
+}
+

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>زاد العلم — الودجت السريع</title>
+  <link rel="stylesheet" href="css/widget.css">
+</head>
+<body>
+  <div class="widget-frame">
+    <div class="widget-window">
+      <!-- Drag Handle Header -->
+      <div class="widget-header">
+        <div class="header-left">
+          <button class="w-btn w-btn-close" id="w-btn-close" title="إخفاء الودجت">✕</button>
+          <button class="w-btn" id="w-btn-expand" title="فتح النافذة الرئيسية">⤢</button>
+          <button class="w-btn" id="w-btn-next" title="المسألة التالية">↺</button>
+        </div>
+
+        <div class="header-right">
+          <span class="widget-due-badge">المستحق: <strong id="w-due-count">0</strong></span>
+          <span class="widget-badge" id="w-category-badge">العقيدة</span>
+        </div>
+      </div>
+
+      <!-- Main Body -->
+      <div class="widget-body">
+        <div class="w-question-box">
+          <div class="w-question-text" id="w-question-text">
+            جارٍ استحضار مسألة شرعية...
+          </div>
+        </div>
+
+        <!-- Quiz Options (Shown if question has multiple choice options) -->
+        <div class="w-options-list" id="w-options-list"></div>
+
+        <!-- Answer / Proof Box -->
+        <div class="w-answer-box" id="w-answer-box">
+          <strong style="color:var(--text-gold); display:block; margin-bottom:4px;">💡 الإجابة والتأصيل:</strong>
+          <div id="w-answer-text"></div>
+          <div class="w-explanation-text" id="w-explanation-text"></div>
+        </div>
+
+        <!-- Footer Controls -->
+        <div class="w-footer">
+          <!-- Reveal Button for Flashcard mode -->
+          <button class="w-reveal-btn" id="w-reveal-btn">كشف الإجابة الشرعية</button>
+
+          <!-- SM-2 Rating Grid (Shown after reveal) -->
+          <div class="w-rating-grid" id="w-rating-grid">
+            <button class="w-rate-btn w-rate-again" id="w-btn-again">أعد</button>
+            <button class="w-rate-btn w-rate-hard" id="w-btn-hard">صعب</button>
+            <button class="w-rate-btn w-rate-good" id="w-btn-good">جيد</button>
+            <button class="w-rate-btn w-rate-easy" id="w-btn-easy">سهل</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/tauri-bridge.js"></script>
+  <script src="js/anki-template.js"></script>
+  <script src="js/widget.js"></script>
+</body>
+</html>

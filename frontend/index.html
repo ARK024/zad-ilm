@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>زاد العلم — رفيقك اليومي لتعلم العلوم الشرعية</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">📚</div>
+        <div>
+          <div class="brand-title">زاد العلم</div>
+          <div class="brand-subtitle">التكرار المتباعد للعلوم الشرعية</div>
+        </div>
+      </div>
+
+      <ul class="nav-list">
+        <li>
+          <button class="nav-btn active" data-view="dashboard">
+            <span>📊</span>
+            <span>الرئيسية والإحصائيات</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-view="decks">
+            <span>🗂️</span>
+            <span>رزم أنكي (Decks)</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-view="study">
+            <span>🎴</span>
+            <span>جلسة الاستذكار</span>
+            <span class="nav-badge" id="nav-study-badge">0</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-view="quiz">
+            <span>❓</span>
+            <span>بنك الأسئلة والاختبارات</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-view="browser">
+            <span>📚</span>
+            <span>مستعرض العلوم والمسائل</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-btn" data-view="settings">
+            <span>⚙️</span>
+            <span>الإعدادات والنسخ الاحتياطي</span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <button class="widget-quick-btn" onclick="App.openWidget()">
+          <span>⚡</span>
+          <span>إظهار الودجت العائم</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main View Area -->
+    <main class="main-view">
+      <!-- Top sticky bar -->
+      <header class="top-bar">
+        <h1 class="top-title" id="top-bar-title">الرئيسية والإحصائيات</h1>
+        <div class="stats-badges">
+          <div class="badge-item badge-streak">
+            <span>🔥</span>
+            <span>التزام: <strong id="top-streak-count">1</strong> يوم</span>
+          </div>
+          <div class="badge-item badge-due">
+            <span>🎯</span>
+            <span>المستحق: <strong id="top-due-count">0</strong> مسألة</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============================================== -->
+      <!-- VIEW 1: DASHBOARD -->
+      <!-- ============================================== -->
+      <section class="content-section active" id="view-dashboard">
+        <div class="welcome-hero">
+          <h2 class="hero-title">مرحباً بك في زاد العلم 🌿</h2>
+          <p class="hero-subtitle">
+            منصتك اليومية لتأصيل وحفظ العلوم الشرعية بخوارزمية التكرار المتباعد الذكية (Anki SM-2)، مع بنك أسئلة وتحديات يومية وتصحيح وتأصيل فوري.
+          </p>
+        </div>
+
+        <!-- Action Cards Grid -->
+        <div class="action-cards-grid">
+          <div class="action-card featured">
+            <div class="card-top">
+              <span class="action-icon">🎴</span>
+              <span class="tag-badge" style="color:var(--text-gold); border-color:var(--border-gold);">الورد اليومي</span>
+            </div>
+            <h3 class="action-card-title">مراجعة البطاقات المستحقة</h3>
+            <p class="action-card-desc">راجع المسائل والمتون الشرعية المجدولة لليوم لتثبيت حفظها في الذاكرة طويلة المدى.</p>
+            <button class="action-btn btn-primary" onclick="App.switchView('study')">
+              <span>ابدأ ورد الاستذكار الآن</span>
+              <span>⬅</span>
+            </button>
+          </div>
+
+          <div class="action-card">
+            <div class="card-top">
+              <span class="action-icon">❓</span>
+              <span class="tag-badge" style="color:var(--text-emerald); border-color:var(--border-color);">تحدي فوري</span>
+            </div>
+            <h3 class="action-card-title">اختبار قياس الفهم</h3>
+            <p class="action-card-desc">أسئلة تفاعلية فورية في العقيدة، فقه العبادات، الحديث، التفسير مع تصحيح وبيان الأدلة.</p>
+            <button class="action-btn btn-gold" onclick="App.switchView('quiz')">
+              <span>خوض الاختبار السريع</span>
+              <span>⚡</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Metric Numbers -->
+        <div class="stats-metrics-grid">
+          <div class="metric-card">
+            <span class="metric-label">المستحق للمراجعة اليوم</span>
+            <span class="metric-value" id="metric-due-val" style="color:var(--accent-gold);">0</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">المُراجع اليوم / الهدف</span>
+            <span class="metric-value" id="metric-today-val">0 / 15</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">المسائل المتقنة تماماً</span>
+            <span class="metric-value" id="metric-mastered-val" style="color:var(--text-emerald);">0</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">إجمالي رصيد المسائل</span>
+            <span class="metric-value" id="metric-total-val">0</span>
+          </div>
+        </div>
+
+        <!-- Categories breakdown -->
+        <h3 class="section-title">
+          <span>📚</span>
+          <span>العلوم الشرعية المتاحة</span>
+        </h3>
+        <div class="category-chips-grid" id="category-chips-list">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- VIEW: ANKI DECKS -->
+      <!-- ============================================== -->
+      <section class="content-section" id="view-decks">
+        <div class="anki-header-row">
+          <div>
+            <h2 style="font-size: 20px; font-weight: 800; color: var(--text-gold); margin-bottom: 4px;">رزم وقوالب أنكي (Anki Decks)</h2>
+            <p style="font-size: 13px; color: var(--text-muted);">
+              استورد رزمك الخاصة من Anki بصيغة <code>.apkg</code> مع دعم كامل لقوالب البطاقات والوسائط وملء الفراغات (Cloze).
+            </p>
+          </div>
+          <button class="action-btn btn-primary" onclick="DecksManager.triggerFileInput()">
+            <span>📥</span>
+            <span>استيراد رزمة (.apkg)</span>
+          </button>
+          <input type="file" id="anki-file-input" accept=".apkg,.colpkg,.zip" style="display:none;" onchange="DecksManager.handleFileSelect(event)">
+        </div>
+
+        <!-- Dropzone for Drag & Drop .apkg -->
+        <div class="anki-dropzone" id="anki-drop-zone" onclick="DecksManager.triggerFileInput()">
+          <div class="dropzone-icon">📦</div>
+          <div class="dropzone-title">اسحب وأفلت رزمة أنكي (.apkg) هنا مباشرة</div>
+          <div class="dropzone-desc">أو انقر لاختيار ملف من جهازك. يتم استخراج البطاقات، القوالب، وملفات الصوت والصور تلقائياً.</div>
+        </div>
+
+        <!-- Decks Grid -->
+        <div class="decks-grid" id="decks-grid">
+          <!-- Populated by DecksManager -->
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- VIEW 2: STUDY / FLASHCARDS -->
+      <!-- ============================================== -->
+      <section class="content-section" id="view-study">
+        <div class="study-container">
+          <div class="study-header">
+            <div class="study-card-meta">
+              <span class="tag-badge tag-category" id="study-card-category">العقيدة</span>
+              <span class="tag-badge tag-topic" id="study-card-topic">الأصول الثلاثة</span>
+              <span class="tag-badge" id="study-card-difficulty" style="color:var(--text-muted);">مبتدئ</span>
+            </div>
+            <div id="study-progress-text" style="font-size:13px; color:var(--text-muted); font-weight:600;">بطاقة 1 من 10</div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="study-empty-state" style="display:none; text-align:center; padding:60px 20px; background:var(--bg-surface); border-radius:var(--radius-lg); border:1px solid var(--border-color);">
+            <div style="font-size:48px; margin-bottom:14px;">🎉</div>
+            <h3 style="font-size:20px; margin-bottom:8px; color:var(--text-gold);">ما شاء الله! أنهيت جميع مراجعات هذا القسم</h3>
+            <p style="color:var(--text-muted); max-width:400px; margin:0 auto 20px; font-size:14px;">لقد راجعت جميع المسائل المستحقة لليوم بنجاح وفق خوارزمية التكرار المتباعد.</p>
+            <button class="action-btn btn-primary" style="margin:0 auto;" onclick="App.switchView('dashboard')">العودة للرئيسية</button>
+          </div>
+
+          <!-- Card Content Box -->
+          <div class="flashcard-box" id="study-card-content">
+            <div class="card-question-box">
+              <div class="card-question-text" id="study-question-text">
+                جارٍ تحميل المسألة...
+              </div>
+            </div>
+
+            <!-- Answer Box (Hidden until revealed) -->
+            <div class="card-answer-box" id="study-answer-box">
+              <div class="card-answer-title">💡 الإجابة والتأصيل الشرعي:</div>
+              <div class="card-answer-text" id="study-answer-text"></div>
+              
+              <div class="card-explanation-box" id="study-explanation-box">
+                <span class="explanation-label">📖 الدليل والبيان:</span>
+                <div id="study-explanation-text"></div>
+              </div>
+            </div>
+
+            <!-- Reveal Button -->
+            <div class="reveal-btn-container" id="study-reveal-box">
+              <button class="btn-reveal" onclick="StudySession.revealAnswer()">
+                <span>كشف الإجابة الشرعية (المسافة Space)</span>
+              </button>
+            </div>
+
+            <!-- 4-Rating buttons (Anki SM-2) -->
+            <div class="rating-bar" id="study-rating-bar">
+              <button class="rate-btn rate-again" onclick="StudySession.submitRating(1)">
+                <span class="rating-name">🔴 أعد (1)</span>
+                <span class="rating-time" id="est-again">1 يوم</span>
+              </button>
+              <button class="rate-btn rate-hard" onclick="StudySession.submitRating(2)">
+                <span class="rating-name">🟡 صعب (2)</span>
+                <span class="rating-time" id="est-hard">2 يوم</span>
+              </button>
+              <button class="rate-btn rate-good" onclick="StudySession.submitRating(3)">
+                <span class="rating-name">🟢 جيد (3)</span>
+                <span class="rating-time" id="est-good">4 أيام</span>
+              </button>
+              <button class="rate-btn rate-easy" onclick="StudySession.submitRating(4)">
+                <span class="rating-name">🔵 سهل (4)</span>
+                <span class="rating-time" id="est-easy">7 أيام</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- VIEW 3: QUIZ MODE -->
+      <!-- ============================================== -->
+      <section class="content-section" id="view-quiz">
+        <div class="quiz-container">
+          <div class="quiz-score-bar">
+            <div class="study-card-meta">
+              <span class="tag-badge tag-category" id="quiz-card-category">فقه العبادات</span>
+              <span class="tag-badge tag-topic" id="quiz-card-topic">فقه الطهارة</span>
+            </div>
+            <div class="score-stats">
+              <div>النتيجة: <strong id="quiz-score-val" style="color:var(--text-emerald);">0 / 0</strong></div>
+              <div>الدقة: <strong id="quiz-accuracy-val" style="color:var(--text-gold);">100%</strong></div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="quiz-empty-state" style="display:none; text-align:center; padding:60px 20px; background:var(--bg-surface); border-radius:var(--radius-lg);">
+            <div style="font-size:48px; margin-bottom:14px;">🎯</div>
+            <h3 style="color:var(--text-gold); margin-bottom:8px;">انتهى الاختبار!</h3>
+            <p style="color:var(--text-muted); margin-bottom:20px;">أحسنت في استذكار واختبار هذه المسائل الشرعية.</p>
+            <button class="action-btn btn-gold" style="margin:0 auto;" onclick="QuizSession.init('all')">إعادة الاختبار مجدداً</button>
+          </div>
+
+          <!-- Question Box -->
+          <div class="quiz-question-box" id="quiz-question-box">
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:12px; color:var(--text-muted);">
+              <span>اختر الإجابة الصحيحة (يمكن استخدام مفاتيح 1, 2, 3, 4):</span>
+              <span id="quiz-progress-text">سؤال 1</span>
+            </div>
+            <div class="quiz-question-title" id="quiz-question-text">
+              جارٍ تحميل السؤال...
+            </div>
+
+            <!-- Options Container -->
+            <div class="quiz-options-list" id="quiz-options-list">
+              <!-- Rendered via JS -->
+            </div>
+
+            <!-- Instant Proof and scholarly explanation -->
+            <div class="quiz-proof-box" id="quiz-proof-box">
+              <div class="quiz-proof-title">
+                <span>📖</span>
+                <span>التأصيل والدليل الشرعي:</span>
+              </div>
+              <div class="quiz-proof-text" id="quiz-proof-text"></div>
+            </div>
+
+            <!-- Next button -->
+            <div class="quiz-next-bar" id="quiz-next-bar">
+              <button class="action-btn btn-primary" onclick="QuizSession.nextQuestion()">
+                <span>السؤال التالي (المسافة Space)</span>
+                <span>⬅</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- VIEW 4: DECK BROWSER & MANAGEMENT -->
+      <!-- ============================================== -->
+      <section class="content-section" id="view-browser">
+        <div class="browser-top-bar">
+          <div class="search-input-box">
+            <input type="text" class="search-input" id="browser-search-input" placeholder="🔍 ابحث في نصوص الأسئلة والمسائل والأدلة...">
+          </div>
+
+          <select class="filter-select" id="browser-category-filter">
+            <option value="all">جميع العلوم الشرعية</option>
+            <option value="العقيدة والتوحيد">العقيدة والتوحيد</option>
+            <option value="فقه العبادات">فقه العبادات</option>
+            <option value="الحديث ومصطلحه">الحديث ومصطلحه</option>
+            <option value="علوم القرآن والتفسير">علوم القرآن والتفسير</option>
+            <option value="السيرة النبوية والآداب">السيرة النبوية والآداب</option>
+            <option value="أصول الفقه">أصول الفقه</option>
+            <option value="اللغة العربية والنحو">اللغة العربية والنحو</option>
+          </select>
+
+          <select class="filter-select" id="browser-state-filter">
+            <option value="all">جميع الحالات</option>
+            <option value="due">المستحقة للمراجعة اليوم</option>
+            <option value="new">الجديدة</option>
+            <option value="learning">قيد التعلم</option>
+            <option value="mastered">المتقنة</option>
+          </select>
+
+          <button class="action-btn btn-primary" onclick="DeckBrowser.openAddModal()">
+            <span>➕</span>
+            <span>إضافة مسألة</span>
+          </button>
+
+          <button class="icon-btn" title="تصدير المسائل (JSON)" onclick="DeckBrowser.exportData()">📤</button>
+          <button class="icon-btn" title="استيراد مسائل (JSON)" onclick="DeckBrowser.importData()">📥</button>
+        </div>
+
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;" id="browser-count-text">
+          جارٍ التحميل...
+        </div>
+
+        <div class="browser-cards-list" id="browser-cards-list">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- VIEW 5: SETTINGS -->
+      <!-- ============================================== -->
+      <section class="content-section" id="view-settings">
+        <div style="max-width:680px; margin:0 auto; background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:32px;">
+          <h2 style="font-size:20px; font-weight:700; margin-bottom:24px; color:var(--text-gold);">إعدادات البرنامج والتفضيلات</h2>
+
+          <div class="form-group">
+            <label class="form-label">الهدف اليومي للمراجعة (عدد البطاقات):</label>
+            <input type="number" class="form-input" id="setting-daily-goal" min="5" max="100" value="15">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">تكرار ظهور الودجت العائم تلقائياً (بالدقائق):</label>
+            <input type="number" class="form-input" id="setting-widget-interval" min="5" max="240" value="30">
+          </div>
+
+          <div class="form-group" style="flex-direction:row; align-items:center; gap:12px; margin-top:12px;">
+            <input type="checkbox" id="setting-widget-enabled" checked style="width:18px; height:18px; cursor:pointer;">
+            <label for="setting-widget-enabled" class="form-label" style="margin:0; cursor:pointer;">تفعيل التذكير التلقائي بالودجت على سطح المكتب أثناء العمل</label>
+          </div>
+
+          <div class="form-group" style="flex-direction:row; align-items:center; gap:12px;">
+            <input type="checkbox" id="setting-sound-enabled" checked style="width:18px; height:18px; cursor:pointer;">
+            <label for="setting-sound-enabled" class="form-label" style="margin:0; cursor:pointer;">تفعيل المؤثرات الصوتية التفاعلية الهادئة</label>
+          </div>
+
+          <div style="margin:24px 0; padding:16px; background:var(--bg-card); border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div style="font-size:14px; font-weight:600; margin-bottom:6px;">إجمالي المراجعات المسجلة في مسيرتك العلمية:</div>
+            <div style="font-size:26px; font-weight:800; color:var(--text-emerald);" id="setting-total-reviews">0</div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:12px;">
+            <button class="action-btn btn-primary" id="btn-save-settings">حفظ التغييرات</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal for Add/Edit Card -->
+  <div class="modal-overlay" id="card-edit-modal">
+    <div class="modal-box">
+      <h3 class="modal-title" id="modal-card-title">إضافة مسألة جديدة</h3>
+
+      <div class="form-group">
+        <label class="form-label">العلم الشرعي:</label>
+        <select class="form-select" id="form-card-category">
+          <option value="العقيدة والتوحيد">العقيدة والتوحيد</option>
+          <option value="فقه العبادات">فقه العبادات</option>
+          <option value="الحديث ومصطلحه">الحديث ومصطلحه</option>
+          <option value="علوم القرآن والتفسير">علوم القرآن والتفسير</option>
+          <option value="السيرة النبوية والآداب">السيرة النبوية والآداب</option>
+          <option value="أصول الفقه">أصول الفقه</option>
+          <option value="اللغة العربية والنحو">اللغة العربية والنحو</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">الموضوع / الباب الفرعي:</label>
+        <input type="text" class="form-input" id="form-card-topic" placeholder="مثال: الأصول الثلاثة، فقه الصلاة...">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">نوع البطاقة:</label>
+        <select class="form-select" id="form-card-type" onchange="DeckBrowser.toggleOptionsField()">
+          <option value="flashcard">بطاقة استذكار (وجهين: سؤال وجواب وتأصيل)</option>
+          <option value="quiz">سؤال اختيار من متعدد (Quiz مع خيارات وتصحيح)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">نص السؤال أو المسألة:</label>
+        <textarea class="form-textarea" id="form-card-question" rows="3" placeholder="اكتب السؤال أو المسألة الشرعية..."></textarea>
+      </div>
+
+      <!-- Options container for Quiz -->
+      <div class="form-group" id="form-quiz-options-group" style="display:none;">
+        <label class="form-label">الخيارات (اكتب كل خيار في سطر منفصل):</label>
+        <textarea class="form-textarea" id="form-card-options" rows="4" placeholder="الخيار الأول&#10;الخيار الثاني&#10;الخيار الثالث&#10;الخيار الرابع"></textarea>
+        
+        <label class="form-label" style="margin-top:8px;">رقم الخيار الصحيح (0 للخيار الأول، 1 للثاني...):</label>
+        <input type="number" class="form-input" id="form-card-correct-idx" min="0" max="4" value="0">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">الإجابة الشافية:</label>
+        <textarea class="form-textarea" id="form-card-answer" rows="3" placeholder="اكتب الحكم أو الجواب الصحيح..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">التأصيل والدليل والتعليل الشرعي:</label>
+        <textarea class="form-textarea" id="form-card-explanation" rows="3" placeholder="الدليل من القرآن أو السنة وأقوال أهل العلم..."></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="DeckBrowser.closeModal()">إلغاء</button>
+        <button class="action-btn btn-primary" onclick="DeckBrowser.saveModalCard()">حفظ المسألة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Anki Import Loading Overlay -->
+  <div class="loading-overlay" id="anki-import-loading">
+    <div class="spinner"></div>
+    <div style="font-size: 16px; font-weight: 700;" id="anki-loading-text">جارٍ استيراد رزمة أنكي...</div>
+  </div>
+
+  <!-- Anki Import Success Modal -->
+  <div class="modal-overlay" id="anki-import-success-modal">
+    <div class="modal-box" style="text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 12px;">🎉</div>
+      <h3 class="modal-title" style="margin-bottom: 8px;">تم استيراد الرزمة بنجاح!</h3>
+      <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">
+        تمت قراءة وتحليل بيانات الرزمة وقوالبها بالكامل:
+      </p>
+
+      <div style="background: var(--bg-card); border-radius: var(--radius-md); padding: 18px; margin-bottom: 24px; text-align: right; display: flex; flex-direction: column; gap: 8px;">
+        <div>📖 <strong>اسم الرزمة:</strong> <span id="import-res-deck" style="color: var(--text-gold);"></span></div>
+        <div>🎴 <strong>عدد البطاقات:</strong> <span id="import-res-cards" style="color: var(--text-emerald); font-weight: 700;"></span></div>
+        <div>📝 <strong>عدد الملاحظات:</strong> <span id="import-res-notes"></span></div>
+        <div>🔊 <strong>ملفات الوسائط المستخرجة:</strong> <span id="import-res-media"></span></div>
+      </div>
+
+      <button class="action-btn btn-primary" style="margin: 0 auto; width: 100%;" onclick="DecksManager.closeSuccessModal()">
+        ممتاز، ابدأ المراجعة الآن
+      </button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/tauri-bridge.js"></script>
+  <script src="js/anki-template.js"></script>
+  <script src="js/decks.js"></script>
+  <script src="js/study.js"></script>
+  <script src="js/quiz.js"></script>
+  <script src="js/browser.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+name: Build Windows (.exe Installer & Portable)
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release Tag (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows Application
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: 'src-tauri -> target'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Build Windows NSIS Installer & Portable Binary
+        run: |
+          cd src-tauri
+          tauri build --bundles nsis
+
+      - name: Prepare Release Files
+        shell: bash
+        run: |
+          mkdir -p release-files
+          cp src-tauri/target/release/bundle/nsis/*.exe release-files/ || true
+          cp src-tauri/target/release/zad-al-ilm.exe release-files/ || true
+          echo "Release Files Prepared:"
+          ls -la release-files/
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zad-al-ilm-windows-x64
+          path: release-files/*
+
+      - name: Compute Release Tag
+        id: tag_info
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v1.0.0"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag_info.outputs.tag }}
+          name: زاد العلم ${{ steps.tag_info.outputs.tag }}
+          body: |
+            ## 🌿 زاد العلم (Zad Al-Ilm) — الإصدار ${{ steps.tag_info.outputs.tag }}
+            
+            رفيقك اليومي لتعلم وتأصيل العلوم الشرعية بالتكرار المتباعد (Anki-style) وبنك الأسئلة والاختبارات الفورية مع ودجت سطح المكتب العائم ودعم رزم أنكي (`.apkg`).
+
+            ### 📦 روابط التحميل المباشرة لويندوز (Windows 10 / 11):
+            - 🚀 **ملف التثبيت التلقائي (Installer):** حمل ملف التثبيت المباشر `zad-al-ilm_*_x64-setup.exe`.
+            - 💼 **النسخة المحمولة (Portable EXE):** يعمل فوراً بدون تثبيت `zad-al-ilm.exe`.
+
+            ### ✨ المميزات الرئيسية:
+            - 🧠 **نظام التكرار المتباعد الذكي (SM-2):** لتثبيت وحفظ المسائل والمتون الشرعية في الذاكرة طويلة المدى.
+            - 🗂️ **دعم كامل لرزم وقوالب أنكي (Anki Decks & Templates):** استيراد ملفات `.apkg` بالسحب والإفلات مع دعم ملء الفراغات (Cloze Deletion) والوسائط والصوتيات.
+            - ❓ **بنك أسئلة واختبارات قياس الفهم:** تصحيح فوري وكشف التأصيل والدليل الشرعي من الكتاب والسنة وأقوال أهل العلم.
+            - ⚡ **ودجت عائم خفيف لسطح المكتب:** يطفو على الشاشة بمسائل شرعية واستذكارات سريعة أثناء عملك على الكمبيوتر دون تشتيت.
+            - 📚 **رصيد علمي شامل وموثق:** في العقيدة، فقه العبادات، القواعد الفقهية، الحديث ومصطلحه، علوم القرآن، السيرة، أصول الفقه، والنحو.
+          files: release-files/*
+          draft: false
+          prerelease: false

@@ -1,0 +1,20 @@
+{
+  "daily_goal": 15,
+  "auto_widget_interval_minutes": 30,
+  "widget_enabled": true,
+  "widget_always_on_top": true,
+  "theme": "emerald-dark",
+  "sound_enabled": true,
+  "streak_count": 1,
+  "last_study_date": "2026-09-16",
+  "total_reviewed_all_time": 0,
+  "active_categories": [
+    "العقيدة والتوحيد",
+    "فقه العبادات",
+    "الحديث ومصطلحه",
+    "علوم القرآن والتفسير",
+    "السيرة النبوية والآداب",
+    "أصول الفقه",
+    "اللغة العربية والنحو"
+  ]
+}

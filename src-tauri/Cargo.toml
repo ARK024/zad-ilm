@@ -1,0 +1,40 @@
+[package]
+name = "zad-al-ilm"
+version = "1.0.0"
+description = "زاد العلم — رفيقك اليومي لتعلم وحفظ العلوم الشرعية بالتكرار المتباعد"
+authors = ["Antigravity Studio"]
+edition = "2021"
+default-run = "zad-al-ilm"
+rust-version = "1.77"
+
+[lib]
+name = "zad_al_ilm_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png", "image-ico"] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+parking_lot = "0.12"
+log = "0.4"
+env_logger = "0.11"
+anyhow = "1"
+tokio = { version = "1", features = ["sync", "time", "rt"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+rand = "0.8"
+rusqlite = { version = "0.31", features = ["bundled"] }
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
+regex = "1"
+base64 = "0.22"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true

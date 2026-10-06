@@ -60,6 +60,56 @@ body { font-size: var(--zad-fs); }
           background: transparent !important; margin: 0 !important; }
 #zad-qa, #zad-qa.card, #zad-qa .card { font-size: var(--zad-fs) !important; }
 #zad-qa img { max-width: 100%; height: auto; }
+
+/* أيقونة تشغيل الصوتيات (Replay / Audio Button) */
+.replay-button, a.soundLink {
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 0 6px;
+  cursor: pointer;
+}
+.replay-button svg, a.soundLink svg, svg.playImage {
+  width: 32px !important;
+  height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  display: inline-block !important;
+  vertical-align: middle;
+}
+.replay-button svg circle, a.soundLink svg circle, svg.playImage circle {
+  fill: #fffdf7 !important;
+  stroke: var(--zad-gold) !important;
+  stroke-width: 2.5px;
+}
+.replay-button svg path, a.soundLink svg path, svg.playImage path {
+  fill: var(--zad-gold) !important;
+}
+.replay-button:hover svg circle, a.soundLink:hover svg circle {
+  fill: var(--zad-soft) !important;
+}
+
+/* الوضع الليلي لأيقونة الصوت */
+.nightMode .replay-button svg circle,
+.night_mode .replay-button svg circle,
+body.nightMode svg.playImage circle,
+body.night_mode svg.playImage circle {
+  fill: #262c33 !important;
+  stroke: var(--zad-gold) !important;
+}
+.nightMode .replay-button svg path,
+.night_mode .replay-button svg path,
+body.nightMode svg.playImage path,
+body.night_mode svg.playImage path {
+  fill: #e5e7eb !important;
+}
+.nightMode .replay-button:hover svg circle,
+.night_mode .replay-button:hover svg circle {
+  fill: #3b4350 !important;
+}
+
 #zad-extra:empty, #zad-opts:empty { display: none; }
 .zad-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
 .zad-opt { text-align: right; font: inherit; font-size: .95em; padding: 8px 12px; cursor: pointer;

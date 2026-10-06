@@ -144,8 +144,15 @@ class SettingsDialog(QDialog):
                 "font_size": self.font.value(),
             }
         )
+        old_corner = self.cfg.get("corner")
+        new_corner = self.corner.currentData()
+        if old_corner != new_corner:
+            self.ctl.state.pop("pos", None)
+            self.ctl.save_state()
+
         mw.addonManager.writeConfig(ADDON_NAME, raw)
         self.ctl.reload_config()
-        self.ctl.next_due = 0.0
+        import time as _t
+        self.ctl.next_due = _t.time() + self.ctl._interval()
         tooltip("تم حفظ الإعدادات")
         self.accept()

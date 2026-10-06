@@ -38,6 +38,8 @@ class Controller:
         self.menu = None
         self._act_pause = None
         self.tray_icon = None
+        self.tray_menu = None
+        self._last_sync: float = 0.0
         self._force_exit = False
         self._orig_close_event = None
 
@@ -78,7 +80,13 @@ class Controller:
         self._build_menu()
         self._setup_tray()
         self._hook_close_event()
+        if hasattr(gui_hooks, "theme_did_change"):
+            gui_hooks.theme_did_change.append(self.on_theme_changed)
         self.timer.start(TICK_MS)
+
+    def on_theme_changed(self) -> None:
+        if self.widget:
+            self.widget.restyle()
 
     def on_profile_open(self) -> None:
         self.reload_config()
@@ -108,42 +116,52 @@ class Controller:
 
     def tick(self) -> None:
         """يُستدعى كل 30 ثانية: هل حان وقت بطاقة جديدة؟"""
-        col, w = self._col(), self.widget
-        if not col or not w:
-            return
-        now = dt.datetime.now()
-        self.counter.roll(now.date())
-        if not self.cfg.get("enabled", True) or self.paused:
-            return
-        if w.isVisible() and w.state in ("question", "answer", "busy"):
-            return  # ما زالت هناك بطاقة بانتظار المستخدم
-        if self.cfg.get("pause_while_reviewing", True) and mw.state == "review":
-            return
-        if not engine.is_active(now, self.cfg):
-            return
-        if self.counter.remaining(self.cfg) == 0:
-            return
+        try:
+            col, w = self._col(), self.widget
+            if not col or not w:
+                return
+            now = dt.datetime.now()
+            self.counter.roll(now.date())
+            if not self.cfg.get("enabled", True) or self.paused:
+                return
+            if w.isVisible() and w.state in ("question", "answer", "busy"):
+                return  # ما زالت هناك بطاقة بانتظار المستخدم
+            # فحص حالة المراجعة فقط إن كانت نافذة أنكي ظاهرة للمستخدم
+            if self.cfg.get("pause_while_reviewing", True) and mw.isVisible() and mw.state == "review":
+                return
+            if not engine.is_active(now, self.cfg):
+                return
+            if self.counter.remaining(self.cfg) == 0:
+                return
 
-        ts = time.time()
-        due_by_interval = ts >= self.next_due
-        peek_learning = (
-            not due_by_interval
-            and self.cfg.get("learning_priority", True)
-            and ts - self._last_peek >= 60
-            and ts - self.last_shown >= float(self.cfg.get("learning_min_gap_minutes", 1)) * 60
-        )
-        if not due_by_interval and not peek_learning:
-            return
-        self._last_peek = ts
+            ts = time.time()
+            # مزامنة دورية هادئة في الخلفية كل 30 دقيقة إذا كانت النافذة مخفية بجوار الساعة
+            if not mw.isVisible() and ts - self._last_sync >= 1800:
+                self._last_sync = ts
+                if hasattr(mw, "can_auto_sync") and mw.can_auto_sync():
+                    mw.maybe_auto_sync_on_open_close(lambda _: None)
 
-        fetched = engine.fetch_next(col, self.cfg.get("deck", ""))
-        if fetched is None:
-            self.next_due = ts + self._interval()
-            return
-        if due_by_interval or engine.should_bypass_interval(
-            fetched, self.cfg, ts - self.last_shown
-        ):
-            self._show(fetched)
+            due_by_interval = ts >= self.next_due
+            peek_learning = (
+                not due_by_interval
+                and self.cfg.get("learning_priority", True)
+                and ts - self._last_peek >= 60
+                and ts - self.last_shown >= float(self.cfg.get("learning_min_gap_minutes", 1)) * 60
+            )
+            if not due_by_interval and not peek_learning:
+                return
+            self._last_peek = ts
+
+            fetched = engine.fetch_next(col, self.cfg.get("deck", ""))
+            if fetched is None:
+                self.next_due = ts + self._interval()
+                return
+            if due_by_interval or engine.should_bypass_interval(
+                fetched, self.cfg, ts - self.last_shown
+            ):
+                self._show(fetched)
+        except Exception:
+            pass
 
     def _show(self, fetched: engine.Fetched) -> None:
         w = self.widget
@@ -204,7 +222,11 @@ class Controller:
             self.save_state()
             self._after_answer(secs, max(total - 1, 0))
 
-        answer_card(parent=mw, answer=ans).success(done).run_in_background()
+        def on_fail(e: Exception) -> None:
+            w.state = "answer"
+            tooltip(f"تعذّر تسجيل الإجابة: {e}")
+
+        answer_card(parent=mw, answer=ans).success(done).failure(on_fail).run_in_background()
 
     def _after_answer(self, secs: int, left: int) -> None:
         w = self.widget
@@ -221,7 +243,9 @@ class Controller:
         w.show_done(msg, can_next=left > 0, auto_hide_ms=3500)
 
     def on_hidden(self, state: str) -> None:
-        pass
+        if state in ("question", "answer"):
+            self.next_due = time.time() + self._interval()
+            self.save_state()
 
     def open_main(self) -> None:
         mw.show()
@@ -263,32 +287,32 @@ class Controller:
         self.tray_icon.setIcon(icon)
         self.tray_icon.setToolTip("زاد العلم — أنكي يعمل في الخلفية")
 
-        menu = QMenu()
-        a_show = QAction("إظهار نافذة أنكي", menu)
+        self.tray_menu = QMenu(mw)
+        a_show = QAction("إظهار نافذة أنكي", self.tray_menu)
         a_show.triggered.connect(self.open_main)
-        menu.addAction(a_show)
+        self.tray_menu.addAction(a_show)
 
-        a_card = QAction("عرض بطاقة الآن (Ctrl+Alt+Z)", menu)
+        a_card = QAction("عرض بطاقة الآن (Ctrl+Alt+Z)", self.tray_menu)
         a_card.triggered.connect(self.show_now)
-        menu.addAction(a_card)
+        self.tray_menu.addAction(a_card)
 
-        a_pause = QAction("إيقاف / استئناف الودجت", menu)
+        a_pause = QAction("إيقاف / استئناف الودجت", self.tray_menu)
         a_pause.triggered.connect(self.toggle_pause)
-        menu.addAction(a_pause)
+        self.tray_menu.addAction(a_pause)
 
-        menu.addSeparator()
+        self.tray_menu.addSeparator()
 
-        a_settings = QAction("الإعدادات…", menu)
+        a_settings = QAction("الإعدادات…", self.tray_menu)
         a_settings.triggered.connect(self.open_settings)
-        menu.addAction(a_settings)
+        self.tray_menu.addAction(a_settings)
 
-        menu.addSeparator()
+        self.tray_menu.addSeparator()
 
-        a_quit = QAction("خروج نهائي من أنكي", menu)
+        a_quit = QAction("خروج نهائي من أنكي", self.tray_menu)
         a_quit.triggered.connect(self.force_exit)
-        menu.addAction(a_quit)
+        self.tray_menu.addAction(a_quit)
 
-        self.tray_icon.setContextMenu(menu)
+        self.tray_icon.setContextMenu(self.tray_menu)
         self.tray_icon.activated.connect(self._on_tray_activated)
         self.tray_icon.show()
 
@@ -299,21 +323,44 @@ class Controller:
         ):
             self.open_main()
 
+    def _on_about_to_quit(self) -> None:
+        self._force_exit = True
+
     def _hook_close_event(self) -> None:
         if self._orig_close_event is not None:
             return
         self._orig_close_event = mw.closeEvent
 
+        # ربط أمر الخروج (File -> Exit / Ctrl+Q) صراحةً بـ force_exit حتى لا يتم إخفاؤه
+        if hasattr(mw, "form") and hasattr(mw.form, "actionExit"):
+            mw.form.actionExit.triggered.connect(self.force_exit)
+
+        app = QApplication.instance()
+        if app:
+            app.aboutToQuit.connect(self._on_about_to_quit)
+
         def custom_close(event: QCloseEvent) -> None:
-            if self.cfg.get("close_to_tray", True) and not self._force_exit:
-                if mw.state == "profileManager":
-                    self._orig_close_event(event)
-                    return
-                event.ignore()
-                mw.hide()
-                tooltip("أنكي يعمل الآن في الخلفية بجوار الساعة لتذكيرك بالبطاقات على مدار اليوم", period=3500)
-            else:
+            if self._force_exit:
                 self._orig_close_event(event)
+                return
+
+            if not self.cfg.get("close_to_tray", True):
+                self._orig_close_event(event)
+                return
+
+            if mw.state == "profileManager":
+                self._orig_close_event(event)
+                return
+
+            event.ignore()
+            # الانتقال لمتصفح الرزم حتى لا تعلق حالة review
+            if mw.state == "review":
+                mw.moveToState("deckBrowser")
+            # مزامنة سريعة عند الإغلاق بجوار الساعة
+            if hasattr(mw, "can_auto_sync") and mw.can_auto_sync():
+                mw.maybe_auto_sync_on_open_close(lambda _: None)
+            mw.hide()
+            tooltip("أنكي يعمل الآن في الخلفية بجوار الساعة لتذكيرك بالبطاقات على مدار اليوم", period=3500)
 
         mw.closeEvent = custom_close
 

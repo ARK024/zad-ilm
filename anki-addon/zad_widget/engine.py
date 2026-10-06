@@ -242,17 +242,12 @@ def _due_total(q: QueuedCards) -> int:
 
 
 def counts(col: Collection, deck_name: str = "") -> tuple[int, int, int]:
-    """مجموع (جديدة، تعلّم، مراجعة) في نطاق الودجت."""
-    prev = col.decks.get_current_id()
-    try:
-        scope = _scope_decks(col, deck_name)
-        n = l = r = 0
-        for did in scope:
-            q = _queue_for(col, did)
-            n, l, r = n + q.new_count, l + q.learning_count, r + q.review_count
-        return n, l, r
-    finally:
-        col.decks.select(prev)
+    """مجموع (جديدة، تعلّم، مراجعة) في نطاق الودجت عبر شجرة الجدولة دون تغيير الرزمة الحالية."""
+    target_id = resolve_deck_id(col, deck_name) if deck_name else None
+    tree = col.sched.deck_due_tree(target_id)
+    if not tree:
+        return 0, 0, 0
+    return int(tree.new_count), int(tree.learn_count), int(tree.review_count)
 
 
 def _scope_decks(col: Collection, deck_name: str) -> list[int]:
@@ -267,30 +262,71 @@ def fetch_next(
 ) -> Optional[Fetched]:
     """البطاقة التالية بحسب طابور أنكي الأصلي (أو None إن انتهى المستحق).
 
-    طابور أنكي يعمل على «الرزمة الحالية» فقط، لذا نمرّ على رزم النطاق ونختار
-    بطاقة من إحداها باحتمال يتناسب مع عدد المستحق فيها (فتتنوّع العلوم)،
-    ثم نُعيد تحديد الرزمة الحالية للمستخدم كما كانت.
+    يفحص المستحق عبر شجرة الجدولة دون التبديل العشوائي المرهق لسجل التراجع،
+    ويختار من الرزم ذات المستحق مع إعطاء الأولوية لبطاقات التعلّم.
     """
     rng = rng or random
-    prev = col.decks.get_current_id()
-    try:
-        queues: list[tuple[int, QueuedCards]] = []
-        for did in _scope_decks(col, deck_name):
-            q = _queue_for(col, did)
-            if q.cards:
-                queues.append((did, q))
-        if not queues:
-            return None
-        n = sum(q.new_count for _, q in queues)
-        lrn = sum(q.learning_count for _, q in queues)
-        rev = sum(q.review_count for _, q in queues)
+    target_id = resolve_deck_id(col, deck_name) if deck_name else None
+    tree = col.sched.deck_due_tree(target_id)
+    if not tree or (tree.new_count + tree.learn_count + tree.review_count == 0):
+        return None
 
-        # بطاقات التعلّم المستحقة لها الأولوية دائمًا (مثل أنكي)
-        learning = [(d, q) for d, q in queues if int(q.cards[0].queue) == KIND_LEARNING]
-        pool = learning or queues
-        did, q = rng.choices(pool, weights=[max(_due_total(x), 1) for _, x in pool])[0]
-        # نعيد بناء الطابور لهذه الرزمة حتى تكون الحالة متسقة عند الإجابة
-        q = _queue_for(col, did)
+    # استخراج الرزم المستحقة ذات الصلة
+    if target_id is not None:
+        candidates = [
+            (
+                target_id,
+                int(tree.new_count),
+                int(tree.learn_count),
+                int(tree.review_count),
+                int(getattr(tree, "intraday_learning", 0)),
+            )
+        ]
+    else:
+        candidates = [
+            (
+                int(c.deck_id),
+                int(c.new_count),
+                int(c.learn_count),
+                int(c.review_count),
+                int(getattr(c, "intraday_learning", 0)),
+            )
+            for c in tree.children
+            if (c.new_count + c.learn_count + c.review_count) > 0
+        ]
+        if not candidates and (tree.new_count + tree.learn_count + tree.review_count) > 0:
+            candidates = [
+                (
+                    int(col.decks.get_current_id()),
+                    int(tree.new_count),
+                    int(tree.learn_count),
+                    int(tree.review_count),
+                    int(getattr(tree, "intraday_learning", 0)),
+                )
+            ]
+
+    if not candidates:
+        return None
+
+    total_n = sum(n for _, n, _, _, _ in candidates)
+    total_lrn = sum(l for _, _, l, _, _ in candidates)
+    total_rev = sum(r for _, _, _, r, _ in candidates)
+
+    # بطاقات التعلّم المستحقة الآن (intraday) لها الأولوية دائمًا
+    learning_pool = [c for c in candidates if c[4] > 0]
+    pool = learning_pool or candidates
+    chosen_id, _, _, _, _ = rng.choices(
+        pool, weights=[max(n + l + r, 1) for _, n, l, r, _ in pool]
+    )[0]
+
+    prev = int(col.decks.get_current_id())
+    undo_before = col.undo_status()
+    try:
+        if prev != chosen_id:
+            col.decks.select(chosen_id)
+        q = col.sched.get_queued_cards(fetch_limit=1)
+        if not q.cards:
+            return None
         entry = q.cards[0]
         card = Card(col, backend_card=entry.card)
         card.start_timer()
@@ -299,12 +335,18 @@ def fetch_next(
             queued=entry,
             kind=int(entry.queue),
             labels=list(col.sched.describe_next_states(entry.states)),
-            new_count=n,
-            learning_count=lrn,
-            review_count=rev,
+            new_count=total_n,
+            learning_count=total_lrn,
+            review_count=total_rev,
         )
     finally:
-        col.decks.select(prev)
+        if prev != chosen_id:
+            col.decks.select(prev)
+            if undo_before.last_step > 0 and col.undo_status().last_step > undo_before.last_step:
+                try:
+                    col.merge_undo_entries(undo_before.last_step)
+                except Exception:
+                    pass
 
 
 def build_answer(col: Collection, fetched: Fetched, rating: int) -> CardAnswer:
@@ -349,8 +391,20 @@ def parse_quiz(col: Collection, card: Card) -> Optional[Quiz]:
     if not nt or not str(nt.get("name", "")).startswith(QUIZ_NOTETYPE_PREFIX):
         return None
     try:
-        opts = [note[k] for k in ("A", "B", "C", "D") if k in note and note[k].strip()]
-        correct = int(re.sub(r"\D", "", note["Correct"]) or "0") - 1
+        raw_keys = [k for k in ("A", "B", "C", "D") if k in note]
+        orig_correct_idx = int(re.sub(r"\D", "", note["Correct"] if "Correct" in note else "") or "0") - 1
+        valid_pairs = [(i, note[k].strip()) for i, k in enumerate(raw_keys) if note[k].strip()]
+        if len(valid_pairs) < 2:
+            return None
+        opts = [text for _, text in valid_pairs]
+        correct_in_filtered = -1
+        for new_idx, (orig_idx, _) in enumerate(valid_pairs):
+            if orig_idx == orig_correct_idx:
+                correct_in_filtered = new_idx
+                break
+        if correct_in_filtered == -1:
+            return None
+        correct = correct_in_filtered
     except KeyError:
         return None
     if len(opts) < 2 or not (0 <= correct < len(opts)):

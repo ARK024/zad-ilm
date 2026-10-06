@@ -107,12 +107,13 @@ class ZadWidget(QWidget):
         fl.addWidget(self.grip_right)
 
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(2, 2, 2, 2)
+        lay.setContentsMargins(6, 6, 6, 6)
         lay.setSpacing(0)
         lay.addWidget(self.header)
         lay.addWidget(self.web, 1)
         lay.addWidget(self.footer)
         
+        self.header.installEventFilter(self)
         self.restyle()
         self._show_idle()
 
@@ -178,15 +179,29 @@ class ZadWidget(QWidget):
             self.show()
 
     # ------------------------------------------------------------------ التوسيع وتغيير الحجم
+    def _current_screen(self):
+        pos = self.ctl.state.get("pos")
+        if pos:
+            scr = QGuiApplication.screenAt(QPoint(int(pos[0]) + 20, int(pos[1]) + 20))
+            if scr:
+                return scr
+        scr = QGuiApplication.screenAt(QCursor.pos())
+        if scr:
+            return scr
+        return QApplication.primaryScreen()
+
     def toggle_expand(self) -> None:
         """التبديل بين الوضع الموسّع (شاشة عريضة للقراءة المريحة) والوضع المدمج."""
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = self._current_screen().availableGeometry()
         if self.is_expanded:
             # العودة إلى الحجم المدمج
             self.is_expanded = False
             self.btn_expand.setText("⤢")
             self.btn_expand.setToolTip("توسيع الودجت (F)")
-            if self._pre_expand_geo and screen.contains(self._pre_expand_geo.topLeft()):
+            if self._pre_expand_geo and any(
+                s.availableGeometry().contains(self._pre_expand_geo.topLeft())
+                for s in QGuiApplication.screens()
+            ):
                 self.setGeometry(self._pre_expand_geo)
             else:
                 w = int(self.ctl.state.get("width") or self.ctl.cfg.get("width", 460))
@@ -245,6 +260,24 @@ class ZadWidget(QWidget):
             return
         super().mouseDoubleClickEvent(e)
 
+    def eventFilter(self, watched, event) -> bool:
+        if watched == self.header and event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+                child = self.header.childAt(pos)
+                if not isinstance(child, QToolButton):
+                    wh = self.windowHandle()
+                    if wh and hasattr(wh, "startSystemMove"):
+                        try:
+                            if wh.startSystemMove():
+                                return True
+                        except Exception:
+                            pass
+                    gp = event.globalPosition().toPoint() if hasattr(event, "globalPosition") else event.globalPos()
+                    self._drag_pos = gp - self.frameGeometry().topLeft()
+                    return True
+        return super().eventFilter(watched, event)
+
     def mousePressEvent(self, e) -> None:
         pos = e.position().toPoint() if hasattr(e, "position") else e.pos()
         gp = e.globalPosition().toPoint() if hasattr(e, "globalPosition") else e.globalPos()
@@ -252,13 +285,36 @@ class ZadWidget(QWidget):
 
         if e.button() == Qt.MouseButton.LeftButton:
             if edge != self.EDGE_NONE:
-                # بدء تغيير الحجم بسحب الحافة
+                wh = self.windowHandle()
+                if wh and hasattr(wh, "startSystemResize"):
+                    edges = Qt.Edge(0)
+                    if edge & self.EDGE_LEFT:
+                        edges |= Qt.Edge.LeftEdge
+                    if edge & self.EDGE_RIGHT:
+                        edges |= Qt.Edge.RightEdge
+                    if edge & self.EDGE_TOP:
+                        edges |= Qt.Edge.TopEdge
+                    if edge & self.EDGE_BOTTOM:
+                        edges |= Qt.Edge.BottomEdge
+                    try:
+                        if wh.startSystemResize(edges):
+                            return
+                    except Exception:
+                        pass
+                # البديل اليدوي إن لم يُدعم من النظام
                 self._resizing_edge = edge
                 self._resize_start_mouse = gp
                 self._resize_start_geo = self.geometry()
                 return
             elif self.header.geometry().contains(pos):
-                # بدء سحب النافذة من الرأس
+                wh = self.windowHandle()
+                if wh and hasattr(wh, "startSystemMove"):
+                    try:
+                        if wh.startSystemMove():
+                            return
+                    except Exception:
+                        pass
+                # بدء سحب النافذة يدوياً
                 self._drag_pos = gp - self.frameGeometry().topLeft()
                 return
         super().mousePressEvent(e)
@@ -335,12 +391,15 @@ class ZadWidget(QWidget):
         h = int(saved_h or cfg.get("height", 540))
         self.resize(w, h)
 
-        screen = QApplication.primaryScreen()
+        screen = self._current_screen()
         geo = screen.availableGeometry()
         pos = self.ctl.state.get("pos")
-        if pos and geo.contains(QPoint(int(pos[0]) + 20, int(pos[1]) + 20)):
-            self.move(int(pos[0]), int(pos[1]))
-            return
+        if pos:
+            pt = QPoint(int(pos[0]), int(pos[1]))
+            for scr in QGuiApplication.screens():
+                if scr.availableGeometry().contains(pt + QPoint(20, 20)):
+                    self.move(int(pos[0]), int(pos[1]))
+                    return
         corner = cfg.get("corner", "bottom-right")
         m = 18
         x = geo.right() - w - m if "right" in corner else geo.left() + m
@@ -356,8 +415,12 @@ class ZadWidget(QWidget):
     def hide_widget(self) -> None:
         self._hide_timer.stop()
         av_player.stop_and_clear_queue()
+        old_state = self.state
+        self.state = "idle"
+        self.fetched = None
+        self.quiz = None
         self.hide()
-        self.ctl.on_hidden(self.state)
+        self.ctl.on_hidden(old_state)
 
     def closeEvent(self, e) -> None:
         e.ignore()
@@ -508,7 +571,14 @@ class ZadWidget(QWidget):
             cur_fs = int(self.ctl.cfg.get("font_size", 17))
             new_fs = max(12, min(36, cur_fs + delta))
             self.ctl.cfg["font_size"] = new_fs
-            self._eval(fs=new_fs)
+            try:
+                from .controller import ADDON_NAME
+                raw = mw.addonManager.getConfig(ADDON_NAME) or {}
+                raw["font_size"] = new_fs
+                mw.addonManager.writeConfig(ADDON_NAME, raw)
+            except Exception:
+                pass
+            self.web.eval(f"zadSetFont({new_fs});")
         elif cmd.startswith("play:"):
             self._play(cmd)
         elif cmd == "next":

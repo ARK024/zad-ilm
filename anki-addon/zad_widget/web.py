@@ -15,18 +15,27 @@ BODY = """
   <div id="zad-bar"></div>
 </div>
 <script>
+function zadSetFont(fs) {
+  if (fs) {
+    document.documentElement.style.setProperty("--zad-fs", fs + "px");
+  }
+}
 function zadRender(s) {
-  document.body.className = (s.bodyclass || "") + " zad-body";
-  document.documentElement.style.setProperty("--zad-fs", (s.fs || 17) + "px");
+  if (s.bodyclass !== undefined && s.bodyclass !== null) {
+    document.body.className = s.bodyclass + " zad-body";
+  }
+  if (s.fs) {
+    document.documentElement.style.setProperty("--zad-fs", s.fs + "px");
+  }
   var qa = document.getElementById("zad-qa");
-  if (s.qa !== null && s.qa !== undefined) { $(qa).html(s.qa); }
-  document.getElementById("zad-opts").innerHTML = s.opts || "";
-  document.getElementById("zad-extra").innerHTML = s.extra || "";
-  document.getElementById("zad-bar").innerHTML = s.bar || "";
+  if (s.qa !== undefined && s.qa !== null) { $(qa).html(s.qa); }
+  if (s.opts !== undefined && s.opts !== null) { document.getElementById("zad-opts").innerHTML = s.opts; }
+  if (s.extra !== undefined && s.extra !== null) { document.getElementById("zad-extra").innerHTML = s.extra; }
+  if (s.bar !== undefined && s.bar !== null) { document.getElementById("zad-bar").innerHTML = s.bar; }
   if (s.scroll) {
     var a = document.getElementById("answer") || document.getElementById("zad-extra");
     if (a && a.scrollIntoView) { a.scrollIntoView(); }
-  } else { window.scrollTo(0, 0); }
+  } else if (s.scroll === false) { window.scrollTo(0, 0); }
 }
 document.addEventListener("keydown", function (e) {
   if (e.ctrlKey && (e.key === "+" || e.key === "=")) { e.preventDefault(); pycmd("zoom:in"); return; }
@@ -49,6 +58,7 @@ body { font-size: var(--zad-fs); }
 #zad-root { padding: 10px 14px 6px; }
 #zad-qa { padding: 4px 2px; text-align: right; line-height: 1.9; min-height: 40px;
           background: transparent !important; margin: 0 !important; }
+#zad-qa, #zad-qa.card, #zad-qa .card { font-size: var(--zad-fs) !important; }
 #zad-qa img { max-width: 100%; height: auto; }
 #zad-extra:empty, #zad-opts:empty { display: none; }
 .zad-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }

@@ -107,6 +107,15 @@ class Controller:
     def _col(self):
         return mw.col if mw and mw.col else None
 
+    def _deck_spec(self) -> Any:
+        decks = self.cfg.get("decks")
+        if decks is not None and isinstance(decks, list) and decks:
+            return decks
+        return self.cfg.get("deck", "")
+
+    def _order_mode(self) -> str:
+        return str(self.cfg.get("order_mode", "mix") or "mix")
+
     # ------------------------------------------------------------------ الجدولة
     def _interval(self, fetched_total: int = 0) -> int:
         remaining = self.counter.remaining(self.cfg)
@@ -152,7 +161,7 @@ class Controller:
                 return
             self._last_peek = ts
 
-            fetched = engine.fetch_next(col, self.cfg.get("deck", ""))
+            fetched = engine.fetch_next(col, self._deck_spec(), self._order_mode())
             if fetched is None:
                 self.next_due = ts + self._interval()
                 return
@@ -180,7 +189,7 @@ class Controller:
         if not col or not w:
             tooltip("افتح ملفًا شخصيًا في أنكي أولًا")
             return
-        fetched = engine.fetch_next(col, self.cfg.get("deck", ""))
+        fetched = engine.fetch_next(col, self._deck_spec(), self._order_mode())
         if fetched is None:
             w.show_done("<b>🎉 أتممت كل المستحق اليوم</b><br>ما شاء الله، لا توجد بطاقات الآن.", False, 4000)
             w.show_widget()
@@ -384,17 +393,34 @@ class Controller:
         col = self._col()
         n = l = r = 0
         if col:
-            n, l, r = engine.counts(col, self.cfg.get("deck", ""))
+            n, l, r = engine.counts(col, self._deck_spec())
         cap = int(self.cfg.get("daily_cap", 0) or 0)
         nxt = (
             dt.datetime.fromtimestamp(self.next_due).strftime("%H:%M")
             if self.next_due > time.time()
             else "الآن"
         )
+        spec = self._deck_spec()
+        if isinstance(spec, list) and spec:
+            deck_info = f"الرزم المحددة ({len(spec)}): {', '.join(spec[:3])}{'...' if len(spec) > 3 else ''}"
+        elif spec:
+            deck_info = f"الرزمة: {spec}"
+        else:
+            deck_info = "الرزم: كل الرزم"
+
+        order_names = {
+            "mix": "تنويع متوازن",
+            "deck_by_deck": "رزمة تلو الأخرى",
+            "anki": "ترتيب أنكي الافتراضي",
+        }
+        order_info = order_names.get(self._order_mode(), self._order_mode())
+
         showInfo(
             "📊 حالة اليوم\n\n"
             f"عُرض: {self.counter.shown}" + (f" من {cap}" if cap else "") + "\n"
             f"أُجيب: {self.counter.answered}\n"
+            f"{deck_info}\n"
+            f"نمط الدراسة: {order_info}\n"
             f"المتبقي في أنكي — جديدة: {n} · تعلّم: {l} · مراجعة: {r}\n"
             f"البطاقة القادمة: {nxt}\n"
             f"الحالة: {'متوقف مؤقتًا' if self.paused else 'يعمل'}",

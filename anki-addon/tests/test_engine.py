@@ -127,6 +127,30 @@ class EngineTests(unittest.TestCase):
         self.assertTrue(0 <= quiz.correct < len(quiz.options))
         self.assertTrue(quiz.evidence)
 
+    def test_undo_stack_not_polluted(self):
+        col = self.col
+        undo_before = col.undo_status().undo
+        _ = engine.counts(col)
+        self.assertEqual(col.undo_status().undo, undo_before)
+        _ = engine.fetch_next(col)
+        self.assertEqual(col.undo_status().undo, undo_before)
+
+    def test_quiz_parse_with_blank_options_no_shift(self):
+        cids = self.col.find_cards('"note:زاد – اختبار مؤصل"')
+        self.assertGreater(len(cids), 0)
+        card = self.col.get_card(cids[0])
+        note = card.note()
+        note["A"] = "خيار 1"
+        note["B"] = ""  # فارغ
+        note["C"] = "خيار 3 الصحيح"
+        note["D"] = "خيار 4"
+        note["Correct"] = "3"
+        self.col.update_note(note)
+        quiz = engine.parse_quiz(self.col, self.col.get_card(cids[0]))
+        self.assertIsNotNone(quiz)
+        self.assertEqual(len(quiz.options), 3)
+        self.assertEqual(quiz.options[quiz.correct], "خيار 3 الصحيح")
+
     def test_flash_is_not_quiz(self):
         cids = self.col.find_cards('"note:زاد – بطاقة مؤصلة"')
         self.assertGreater(len(cids), 0)
@@ -151,6 +175,59 @@ class EngineTests(unittest.TestCase):
         self.assertIsNotNone(f)
         deck = self.col.decks.name(f.card.did)
         self.assertTrue(deck == name or deck.startswith(name + "::"), (deck, name))
+
+    def test_resolve_deck_ids(self):
+        col = self.col
+        names = [n.name for n in col.decks.all_names_and_ids() if "::" not in n.name][:2]
+        self.assertGreaterEqual(len(names), 2)
+        dids = engine.resolve_deck_ids(col, names)
+        self.assertEqual(len(dids), 2)
+        # يحافظ على الترتيب الممرر بدقة
+        self.assertEqual(col.decks.name(dids[0]), names[0])
+        self.assertEqual(col.decks.name(dids[1]), names[1])
+        # دعم الاسم المنفرد كنص
+        single_did = engine.resolve_deck_ids(col, names[0])
+        self.assertEqual(single_did, [dids[0]])
+        # مدخلات فارغة أو غير صالحة
+        self.assertEqual(engine.resolve_deck_ids(col, ""), [])
+        self.assertEqual(engine.resolve_deck_ids(col, ["رزمة غير موجودة مطلقا"]), [])
+
+    def test_multi_deck_counts(self):
+        col = self.col
+        names = [n.name for n in col.decks.all_names_and_ids() if "::" not in n.name][:2]
+        c1 = engine.counts(col, names[0])
+        c2 = engine.counts(col, names[1])
+        combined = engine.counts(col, names)
+        self.assertEqual(combined, (c1[0] + c2[0], c1[1] + c2[1], c1[2] + c2[2]))
+
+    def test_deck_by_deck_order(self):
+        col = self.col
+        d1_name = "زاد العلم::أصول الفقه"
+        d2_name = "زاد العلم::الحديث ومصطلحه"
+
+        # الترتيب [d1, d2] يفضل d1 دائمًا طالما به بطاقات مستحقة
+        f1 = engine.fetch_next(col, [d1_name, d2_name], order_mode="deck_by_deck")
+        self.assertIsNotNone(f1)
+        self.assertEqual(col.decks.name(f1.card.did), d1_name)
+
+        # الترتيب المعكوس [d2, d1] يفضل d2 دائمًا
+        f2 = engine.fetch_next(col, [d2_name, d1_name], order_mode="deck_by_deck")
+        self.assertIsNotNone(f2)
+        self.assertEqual(col.decks.name(f2.card.did), d2_name)
+
+    def test_mix_order_draws_from_both(self):
+        col = self.col
+        d1_name = "زاد العلم::العقيدة والتوحيد"
+        d2_name = "زاد العلم::فقه العبادات"
+        decks = [d1_name, d2_name]
+        import random as _r
+        rng = _r.Random(42)
+        seen_decks = set()
+        for _ in range(30):
+            f = engine.fetch_next(col, decks, order_mode="mix", rng=rng)
+            if f:
+                seen_decks.add(col.decks.name(f.card.did))
+        self.assertEqual(seen_decks, set(decks))
 
 
 class PacingTests(unittest.TestCase):
@@ -220,6 +297,17 @@ class PacingTests(unittest.TestCase):
         self.assertFalse(engine.should_bypass_interval(None, self.cfg, 9999))
         off = engine.merged_config({"learning_priority": False})
         self.assertFalse(engine.should_bypass_interval(F(), off, 9999))
+
+    def test_merged_config_decks_and_order(self):
+        c1 = engine.merged_config({"decks": ["رزمة 1", "رزمة 2"], "order_mode": "deck_by_deck"})
+        self.assertEqual(c1["decks"], ["رزمة 1", "رزمة 2"])
+        self.assertEqual(c1["order_mode"], "deck_by_deck")
+
+        # التوافق مع الإعداد القديم المنفرد deck
+        c2 = engine.merged_config({"deck": "رزمة قديمة"})
+        self.assertEqual(c2["decks"], ["رزمة قديمة"])
+        self.assertEqual(c2["deck"], "رزمة قديمة")
+        self.assertEqual(c2["order_mode"], "mix")
 
 
 if __name__ == "__main__":

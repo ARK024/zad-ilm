@@ -9,9 +9,11 @@ RATE_NAMES = {1: "أعد", 2: "صعب", 3: "جيد", 4: "سهل"}
 
 BODY = """
 <div id="zad-root">
-  <div id="zad-qa" class="card"></div>
-  <div id="zad-opts"></div>
-  <div id="zad-extra"></div>
+  <div id="zad-scroll-area">
+    <div id="zad-qa"></div>
+    <div id="zad-opts"></div>
+    <div id="zad-extra"></div>
+  </div>
   <div id="zad-bar"></div>
 </div>
 <script>
@@ -23,6 +25,15 @@ function zadSetFont(fs) {
 function zadRender(s) {
   if (s.bodyclass !== undefined && s.bodyclass !== null) {
     document.body.className = s.bodyclass + " zad-body";
+    var isNight = s.bodyclass.indexOf("nightMode") !== -1 || s.bodyclass.indexOf("night_mode") !== -1;
+    var qa = document.getElementById("zad-qa");
+    if (qa) {
+      if (isNight) {
+        qa.classList.add("nightMode", "night_mode");
+      } else {
+        qa.classList.remove("nightMode", "night_mode");
+      }
+    }
   }
   if (s.fs) {
     document.documentElement.style.setProperty("--zad-fs", s.fs + "px");
@@ -32,10 +43,18 @@ function zadRender(s) {
   if (s.opts !== undefined && s.opts !== null) { document.getElementById("zad-opts").innerHTML = s.opts; }
   if (s.extra !== undefined && s.extra !== null) { document.getElementById("zad-extra").innerHTML = s.extra; }
   if (s.bar !== undefined && s.bar !== null) { document.getElementById("zad-bar").innerHTML = s.bar; }
+
+  var scrollArea = document.getElementById("zad-scroll-area");
   if (s.scroll) {
     var a = document.getElementById("answer") || document.getElementById("zad-extra");
-    if (a && a.scrollIntoView) { a.scrollIntoView(); }
-  } else if (s.scroll === false) { window.scrollTo(0, 0); }
+    if (a && a.scrollIntoView) {
+      a.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (scrollArea) {
+      scrollArea.scrollTop = scrollArea.scrollHeight;
+    }
+  } else if (s.scroll === false) {
+    if (scrollArea) { scrollArea.scrollTop = 0; }
+  }
 }
 document.addEventListener("keydown", function (e) {
   if (e.ctrlKey && (e.key === "+" || e.key === "=")) { e.preventDefault(); pycmd("zoom:in"); return; }
@@ -50,16 +69,90 @@ document.addEventListener("keydown", function (e) {
 """
 
 CSS = """
-:root { --zad-fs: 17px; --zad-gold: #b8860b; --zad-green: #166534; --zad-red: #b91c1c;
-        --zad-bg: #fffdf7; --zad-fg: #1f2937; --zad-border: #d9cfae; --zad-soft: #f4ecd2; }
-body.nightMode, body.night_mode { --zad-bg: #1b1f23; --zad-fg: #e5e7eb; --zad-border: #3b4350; --zad-soft: #262c33; }
-html, body { margin: 0; padding: 0; background: var(--zad-bg) !important; color: var(--zad-fg); direction: rtl; }
-body { font-size: var(--zad-fs); }
-#zad-root { padding: 10px 14px 6px; }
-#zad-qa { padding: 4px 2px; text-align: right; line-height: 1.9; min-height: 40px;
-          background: transparent !important; margin: 0 !important; }
-#zad-qa, #zad-qa.card, #zad-qa .card { font-size: var(--zad-fs) !important; }
-#zad-qa img { max-width: 100%; height: auto; }
+:root {
+  --zad-fs: 17px;
+  --zad-gold: #b8860b;
+  --zad-green: #166534;
+  --zad-red: #b91c1c;
+  --zad-bg: #fffdf7;
+  --zad-fg: #1f2937;
+  --zad-border: #d9cfae;
+  --zad-soft: #f4ecd2;
+}
+
+body.nightMode, body.night_mode {
+  --zad-bg: #1b1f23;
+  --zad-fg: #f3f4f6;
+  --zad-border: #3b4350;
+  --zad-soft: #262c33;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden !important;
+  background: var(--zad-bg) !important;
+  color: var(--zad-fg);
+  direction: rtl;
+  box-sizing: border-box;
+}
+
+body {
+  font-size: var(--zad-fs);
+}
+
+#zad-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 8px 12px 6px;
+  overflow: hidden;
+}
+
+/* منطقة محتوى البطاقة — تتمدد وتوفر تمريرًا داخليًا أنيقًا عند كبر البطاقة */
+#zad-scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-bottom: 6px;
+  box-sizing: border-box;
+}
+
+#zad-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+#zad-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+#zad-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--zad-border);
+  border-radius: 4px;
+}
+#zad-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--zad-gold);
+}
+
+#zad-qa {
+  padding: 4px 2px;
+  text-align: right;
+  line-height: 1.85;
+  min-height: 30px;
+  background: transparent !important;
+  margin: 0 !important;
+  font-size: var(--zad-fs) !important;
+  color: inherit;
+}
+#zad-qa img {
+  max-width: 100%;
+  height: auto;
+}
 
 /* أيقونة تشغيل الصوتيات (Replay / Audio Button) */
 .replay-button, a.soundLink {
@@ -117,33 +210,171 @@ body.night_mode svg.playImage path {
 .zad-opt:hover:not(:disabled) { border-color: var(--zad-gold); }
 .zad-opt.correct { background: #dcfce7; border-color: #16a34a; color: #14532d; font-weight: bold; }
 .zad-opt.wrong { background: #fee2e2; border-color: #dc2626; color: #7f1d1d; }
-.nightMode .zad-opt.correct { background: #14532d; color: #dcfce7; }
-.nightMode .zad-opt.wrong { background: #7f1d1d; color: #fee2e2; }
+.nightMode .zad-opt.correct, .night_mode .zad-opt.correct { background: #14532d; color: #dcfce7; }
+.nightMode .zad-opt.wrong, .night_mode .zad-opt.wrong { background: #7f1d1d; color: #fee2e2; }
 .zad-opt:disabled { cursor: default; opacity: 1; }
 .zad-evidence { margin: 10px 0; padding: 10px 14px; border-right: 4px solid var(--zad-gold);
                 background: rgba(184,134,11,.10); border-radius: 8px; font-size: .92em; line-height: 1.9; }
 .zad-answer { color: var(--zad-green); font-weight: bold; margin-top: 8px; }
-.nightMode .zad-answer { color: #86efac; }
+.nightMode .zad-answer, .night_mode .zad-answer { color: #86efac; }
 .zad-source { color: #6b7280; font-size: .8em; margin-top: 6px; }
+.nightMode .zad-source, .night_mode .zad-source { color: #9ca3af; }
 .zad-verdict { font-weight: bold; margin: 6px 0; }
 .zad-verdict.ok { color: var(--zad-green); } .zad-verdict.no { color: var(--zad-red); }
-#zad-bar { position: sticky; bottom: 0; background: var(--zad-bg); padding: 8px 0 4px;
-           border-top: 1px solid var(--zad-border); margin-top: 10px; }
-.zad-show { width: 100%; padding: 10px; font: inherit; font-weight: bold; cursor: pointer; color: #fff;
-            background: var(--zad-gold); border: 0; border-radius: 10px; }
-.zad-rate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.zad-rate button { font: inherit; font-size: .9em; padding: 6px 2px; cursor: pointer; border-radius: 10px;
-                   border: 2px solid transparent; color: #fff; display: flex; flex-direction: column;
-                   align-items: center; line-height: 1.4; }
-.zad-rate small { font-size: .72em; opacity: .9; direction: ltr; }
-.zad-rate .r1 { background: #dc2626; } .zad-rate .r2 { background: #d97706; }
-.zad-rate .r3 { background: #16a34a; } .zad-rate .r4 { background: #2563eb; }
-.zad-rate button.suggest { border-color: var(--zad-fg); box-shadow: 0 0 0 2px var(--zad-gold); }
-.zad-hint { text-align: center; color: #6b7280; font-size: .75em; margin-top: 4px; }
+
+/* شريط الأزرار السفلي — ثابت دائماً في قاع النافذة ولا يطفو أو يختفي أبدًا */
+#zad-bar {
+  flex: 0 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--zad-bg);
+  padding: 8px 0 2px;
+  border-top: 1px solid var(--zad-border);
+  margin-top: 4px;
+  z-index: 100;
+}
+
+.zad-show {
+  width: 100%;
+  padding: 10px;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  color: #fff;
+  background: var(--zad-gold);
+  border: 0;
+  border-radius: 10px;
+  transition: opacity 0.15s ease;
+}
+.zad-show:hover { opacity: 0.92; }
+
+.zad-rate {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.zad-rate button {
+  font: inherit;
+  font-size: .88em;
+  padding: 6px 2px;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  color: #fff !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.35;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+.zad-rate button:hover { filter: brightness(1.08); }
+.zad-rate button:active { transform: scale(0.98); }
+.zad-rate small {
+  font-size: .74em;
+  opacity: .95;
+  direction: ltr;
+  font-weight: normal;
+  color: #fff !important;
+}
+.zad-rate .r1 { background: #dc2626 !important; }
+.zad-rate .r2 { background: #d97706 !important; }
+.zad-rate .r3 { background: #16a34a !important; }
+.zad-rate .r4 { background: #2563eb !important; }
+.zad-rate button.suggest {
+  border-color: var(--zad-fg) !important;
+  box-shadow: 0 0 0 2px var(--zad-gold);
+}
+
+.zad-hint {
+  text-align: center;
+  color: #6b7280;
+  font-size: .75em;
+  margin-top: 4px;
+}
+.nightMode .zad-hint, .night_mode .zad-hint { color: #9ca3af; }
+
 .zad-done { text-align: center; padding: 28px 8px; line-height: 2; }
 .zad-done b { color: var(--zad-green); font-size: 1.15em; }
-.zad-btn2 { margin-top: 10px; font: inherit; padding: 8px 18px; cursor: pointer; border-radius: 10px;
-            border: 1px solid var(--zad-gold); background: transparent; color: inherit; }
+.nightMode .zad-done b, .night_mode .zad-done b { color: #86efac; }
+.zad-btn2 {
+  margin-top: 10px; font: inherit; padding: 8px 18px; cursor: pointer; border-radius: 10px;
+  border: 1px solid var(--zad-gold); background: transparent; color: inherit;
+}
+
+/* ==========================================================================
+   حل تضارب ألوان النصوص في الوضع الداكن (Dark Mode Conflict Resolution)
+   ========================================================================== */
+body.nightMode, body.night_mode,
+body.nightMode #zad-root, body.night_mode #zad-root,
+body.nightMode #zad-scroll-area, body.night_mode #zad-scroll-area,
+body.nightMode #zad-qa, body.night_mode #zad-qa,
+body.nightMode .card, body.night_mode .card {
+  color: #f3f4f6 !important;
+  background-color: transparent !important;
+}
+
+/* إجبار عناصر نص السؤال والجواب على اللون الفاتح في الوضع الداكن */
+body.nightMode #zad-qa *:not(button):not(.zad-opt):not(.zad-rate *):not(svg *),
+body.night_mode #zad-qa *:not(button):not(.zad-opt):not(.zad-rate *):not(svg *) {
+  color: inherit;
+}
+
+/* إبطال أي ألوان سوداء أو رمادية داكنة مدمجة داخل وسوم HTML في بطاقات المستخدم */
+body.nightMode [style*="color: black" i],
+body.nightMode [style*="color:black" i],
+body.nightMode [style*="color: #000" i],
+body.nightMode [style*="color:#000" i],
+body.nightMode [style*="color: #1" i],
+body.nightMode [style*="color: #2" i],
+body.nightMode [style*="color: #3" i],
+body.nightMode [style*="color: rgb(0" i],
+body.nightMode [style*="color: rgb(1" i],
+body.nightMode [style*="color: rgb(2" i],
+body.nightMode [style*="color: rgb(3" i],
+body.night_mode [style*="color: black" i],
+body.night_mode [style*="color:black" i],
+body.night_mode [style*="color: #000" i],
+body.night_mode [style*="color:#000" i],
+body.night_mode [style*="color: #1" i],
+body.night_mode [style*="color: #2" i],
+body.night_mode [style*="color: #3" i],
+body.night_mode [style*="color: rgb(0" i],
+body.night_mode [style*="color: rgb(1" i],
+body.night_mode [style*="color: rgb(2" i],
+body.night_mode [style*="color: rgb(3" i],
+body.nightMode font[color*="black" i],
+body.nightMode font[color*="#000" i],
+body.night_mode font[color*="black" i],
+body.night_mode font[color*="#000" i] {
+  color: #f3f4f6 !important;
+}
+
+/* إزالة الخلفيات البيضاء الصريحة المضمنة حول الكلمات لمنع الرقع البيضاء المشوهة في الوضع الداكن */
+body.nightMode [style*="background-color: white" i],
+body.nightMode [style*="background-color:white" i],
+body.nightMode [style*="background-color: #fff" i],
+body.nightMode [style*="background-color:#fff" i],
+body.nightMode [style*="background: white" i],
+body.nightMode [style*="background:white" i],
+body.nightMode [style*="background: #fff" i],
+body.nightMode [style*="background:#fff" i],
+body.night_mode [style*="background-color: white" i],
+body.night_mode [style*="background-color:white" i],
+body.night_mode [style*="background-color: #fff" i],
+body.night_mode [style*="background-color:#fff" i] {
+  background-color: transparent !important;
+  color: #f3f4f6 !important;
+}
+
+/* تمييز نصوص الحفظ المفرغة (Cloze Deletions) في الوضع الليلي */
+.cloze {
+  color: #2563eb;
+  font-weight: bold;
+}
+body.nightMode .cloze,
+body.night_mode .cloze {
+  color: #60a5fa !important;
+}
 """
 
 

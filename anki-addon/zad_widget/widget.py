@@ -65,6 +65,7 @@ class ZadWidget(QWidget):
         
         # أزرار تحكم واضحة ومرنة
         self.btn_anki = self._tool_button("📚", "فتح برنامج أنكي الرئيسي", self.ctl.open_main)
+        self.btn_settings = self._tool_button("⚙", "إعدادات زاد العلم", self.ctl.open_settings)
         self.btn_expand = self._tool_button("⤢", "توسيع الودجت (F)", self.toggle_expand)
         self.btn_snooze = self._tool_button("⏰", "تأجيل 30 دقيقة", self.ctl.snooze)
         self.btn_close = self._tool_button("✕", "إخفاء (Esc)", self.hide_widget)
@@ -75,6 +76,7 @@ class ZadWidget(QWidget):
         hl.addWidget(self.title)
         hl.addWidget(self.counts)
         hl.addStretch(1)
+        hl.addWidget(self.btn_settings)
         hl.addWidget(self.btn_snooze)
         hl.addWidget(self.btn_expand)
         hl.addWidget(self.btn_anki)

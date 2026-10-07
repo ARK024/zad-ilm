@@ -171,6 +171,16 @@ class ZadWidget(QWidget):
         f.setBold(True)
         self.title.setFont(f)
 
+        web_bg_hex = "#1b1f23" if night else "#fffdf7"
+        try:
+            self.web.page().setBackgroundColor(QColor(web_bg_hex))
+        except Exception:
+            pass
+        try:
+            self.web.setStyleSheet(f"background-color: {web_bg_hex};")
+        except Exception:
+            pass
+
     def apply_flags(self) -> None:
         flags = Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
         if self.ctl.cfg.get("always_on_top", True):

@@ -114,7 +114,7 @@ class Controller:
         return self.cfg.get("deck", "")
 
     def _order_mode(self) -> str:
-        return str(self.cfg.get("order_mode", "mix") or "mix")
+        return str(self.cfg.get("order_mode", "deck_by_deck") or "deck_by_deck")
 
     # ------------------------------------------------------------------ الجدولة
     def _interval(self, fetched_total: int = 0) -> int:

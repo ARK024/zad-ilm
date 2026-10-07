@@ -98,10 +98,10 @@ class SettingsDialog(QDialog):
         # 1. نمط الدراسة
         form_order = QFormLayout()
         self.order_mode = QComboBox()
+        self.order_mode.addItem("رزمة تلو الأخرى (حسب ترتيب القائمة أدناه)", "deck_by_deck")
         self.order_mode.addItem("تنويع متوازن بين الرزم (بنسبة المستحق)", "mix")
-        self.order_mode.addItem("رزمة تلو الأخرى (حسب ترتيب القائمة)", "deck_by_deck")
         self.order_mode.addItem("ترتيب أنكي الافتراضي", "anki")
-        idx_order = self.order_mode.findData(self.cfg.get("order_mode", "mix"))
+        idx_order = self.order_mode.findData(self.cfg.get("order_mode", "deck_by_deck"))
         self.order_mode.setCurrentIndex(max(idx_order, 0))
         form_order.addRow("نمط دراسة الرزم:", self.order_mode)
         lay_decks.addLayout(form_order)
@@ -194,6 +194,9 @@ class SettingsDialog(QDialog):
         drop_action = getattr(getattr(Qt, "DropAction", None), "MoveAction", None) or getattr(Qt, "MoveAction", None)
         if drop_action is not None:
             self.priority_list.setDefaultDropAction(drop_action)
+        model = self.priority_list.model()
+        if model is not None:
+            model.rowsMoved.connect(lambda *_: self._on_priority_reordered())
 
         v_prio.addWidget(self.priority_list)
         lay_decks.addWidget(grp_priority)
@@ -501,6 +504,11 @@ class SettingsDialog(QDialog):
             self.btn_toggle_unpack.setText("🔀 تفكيك كافة الفروع")
         self._sync_priority_list()
 
+    def _on_priority_reordered(self) -> None:
+        idx = self.order_mode.findData("deck_by_deck")
+        if idx >= 0:
+            self.order_mode.setCurrentIndex(idx)
+
     def _move_priority_item(self, delta: int) -> None:
         row = self.priority_list.currentRow()
         if row < 0:
@@ -510,6 +518,7 @@ class SettingsDialog(QDialog):
             item = self.priority_list.takeItem(row)
             self.priority_list.insertItem(new_row, item)
             self.priority_list.setCurrentRow(new_row)
+            self._on_priority_reordered()
 
     # -------------------------------------------------------------
     # الحفظ
@@ -536,7 +545,7 @@ class SettingsDialog(QDialog):
                 "daily_cap": self.cap.value(),
                 "deck": single_deck,
                 "decks": ordered_decks,
-                "order_mode": self.order_mode.currentData() or "mix",
+                "order_mode": self.order_mode.currentData() or "deck_by_deck",
                 "learning_priority": self.learning.isChecked(),
                 "pause_while_reviewing": self.pause_review.isChecked(),
                 "snooze_minutes": self.snooze.value(),
@@ -560,5 +569,7 @@ class SettingsDialog(QDialog):
         import time as _t
 
         self.ctl.next_due = _t.time() + self.ctl._interval()
+        if self.ctl.widget and self.ctl.widget.isVisible():
+            self.ctl.show_now()
         tooltip("تم حفظ الإعدادات")
         self.accept()

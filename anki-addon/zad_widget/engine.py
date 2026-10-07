@@ -38,8 +38,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "decks": [],
     # اسم الرزمة (للتوافق القديم)
     "deck": "",
-    # طريقة ترتيب دراسة الرزم: "mix" (تنويع متوازن) | "deck_by_deck" (رزمة تلو الأخرى) | "anki" (ترتيب أنكي الأصلي)
-    "order_mode": "mix",
+    # طريقة ترتيب دراسة الرزم: "deck_by_deck" (رزمة تلو الأخرى) | "mix" (تنويع متوازن) | "anki" (ترتيب أنكي الأصلي)
+    "order_mode": "deck_by_deck",
     # بطاقات التعلّم (الدقائق) تظهر في موعدها حتى لو لم يحن الفاصل
     "learning_priority": True,
     "learning_min_gap_minutes": 1,
@@ -295,14 +295,14 @@ def _scope_decks(col: Collection, deck_name: str) -> list[int]:
 def fetch_next(
     col: Collection,
     deck_spec: Any = "",
-    order_mode: str = "mix",
+    order_mode: str = "deck_by_deck",
     rng: Optional[random.Random] = None,
 ) -> Optional[Fetched]:
     """البطاقة التالية بحسب طابور أنكي الأصلي (أو None إن انتهى المستحق).
 
     يدعم اختيار رزمة واحدة أو عدة رزم وترتيب الدراسة:
-    - mix: تنويع متوازن بين الرزم بنسبة المستحق (خلط ذكي ينشّط الذهن)
     - deck_by_deck: إنهاء الرزم بالتتابع حسب ترتيب القائمة (إنهاء الأولى ثم التالية)
+    - mix: تنويع متوازن بين الرزم بنسبة المستحق (خلط ذكي ينشّط الذهن)
     - anki: ترتيب أنكي الافتراضي
     """
     if isinstance(order_mode, random.Random):
@@ -353,45 +353,47 @@ def fetch_next(
     total_lrn = sum(l for _, _, l, _, _ in candidates)
     total_rev = sum(r for _, _, _, r, _ in candidates)
 
-    if order_mode == "deck_by_deck":
-        # إنهاء الرزمة الحالية بالتتابع حتى تفرغ تمامًا
-        chosen_id = candidates[0][0]
-    else:
-        # بطاقات التعلّم المستحقة الآن (intraday) لها الأولوية في التنويع
+    order_pool: list[int] = []
+    if order_mode == "mix":
+        # في نمط التنويع: بطاقات التعلّم المستحقة الآن لها الأسبقية بالقرعة الموزونة
         learning_pool = [c for c in candidates if c[4] > 0]
         if learning_pool:
-            chosen_id = rng.choices(
+            chosen = rng.choices(
                 learning_pool, weights=[max(c[1] + c[2] + c[3], 1) for c in learning_pool]
             )[0][0]
-        elif order_mode == "anki":
-            chosen_id = candidates[0][0]
-        else:  # "mix"
-            chosen_id = rng.choices(
+        else:
+            chosen = rng.choices(
                 candidates, weights=[max(n + l + r, 1) for _, n, l, r, _ in candidates]
             )[0][0]
+        order_pool = [chosen] + [c[0] for c in candidates if c[0] != chosen]
+    else:
+        # deck_by_deck أو anki: يلتزم بترتيب القائمة بدقة رزمة تلو الأخرى
+        order_pool = [c[0] for c in candidates]
 
     prev = int(col.decks.get_current_id())
     undo_before = col.undo_status()
     try:
-        if prev != chosen_id:
-            col.decks.select(chosen_id)
-        q = col.sched.get_queued_cards(fetch_limit=1)
-        if not q.cards:
-            return None
-        entry = q.cards[0]
-        card = Card(col, backend_card=entry.card)
-        card.start_timer()
-        return Fetched(
-            card=card,
-            queued=entry,
-            kind=int(entry.queue),
-            labels=list(col.sched.describe_next_states(entry.states)),
-            new_count=total_n,
-            learning_count=total_lrn,
-            review_count=total_rev,
-        )
+        for chosen_id in order_pool:
+            if prev != chosen_id:
+                col.decks.select(chosen_id)
+            q = col.sched.get_queued_cards(fetch_limit=1)
+            if q.cards:
+                entry = q.cards[0]
+                card = Card(col, backend_card=entry.card)
+                card.start_timer()
+                return Fetched(
+                    card=card,
+                    queued=entry,
+                    kind=int(entry.queue),
+                    labels=list(col.sched.describe_next_states(entry.states)),
+                    new_count=total_n,
+                    learning_count=total_lrn,
+                    review_count=total_rev,
+                )
+        return None
     finally:
-        if prev != chosen_id:
+        current_after = int(col.decks.get_current_id())
+        if prev != current_after:
             col.decks.select(prev)
             if undo_before.last_step > 0 and col.undo_status().last_step > undo_before.last_step:
                 try:

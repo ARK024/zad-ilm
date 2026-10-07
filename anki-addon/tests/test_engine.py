@@ -215,6 +215,15 @@ class EngineTests(unittest.TestCase):
         self.assertIsNotNone(f2)
         self.assertEqual(col.decks.name(f2.card.did), d2_name)
 
+        # الافتراضي بدون تمرير order_mode يجب أن يلتزم بترتيب القائمة (deck_by_deck)
+        f_def1 = engine.fetch_next(col, [d1_name, d2_name])
+        self.assertIsNotNone(f_def1)
+        self.assertEqual(col.decks.name(f_def1.card.did), d1_name)
+
+        f_def2 = engine.fetch_next(col, [d2_name, d1_name])
+        self.assertIsNotNone(f_def2)
+        self.assertEqual(col.decks.name(f_def2.card.did), d2_name)
+
     def test_mix_order_draws_from_both(self):
         col = self.col
         d1_name = "زاد العلم::العقيدة والتوحيد"
@@ -307,7 +316,7 @@ class PacingTests(unittest.TestCase):
         c2 = engine.merged_config({"deck": "رزمة قديمة"})
         self.assertEqual(c2["decks"], ["رزمة قديمة"])
         self.assertEqual(c2["deck"], "رزمة قديمة")
-        self.assertEqual(c2["order_mode"], "mix")
+        self.assertEqual(c2["order_mode"], "deck_by_deck")
 
 
 if __name__ == "__main__":

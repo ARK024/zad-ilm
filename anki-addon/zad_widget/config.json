@@ -9,7 +9,7 @@
   "daily_cap": 0,
   "decks": [],
   "deck": "",
-  "order_mode": "mix",
+  "order_mode": "deck_by_deck",
   "learning_priority": true,
   "learning_min_gap_minutes": 1,
   "pause_while_reviewing": true,

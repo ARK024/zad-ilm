@@ -26,6 +26,19 @@ function zadRender(s) {
   if (s.bodyclass !== undefined && s.bodyclass !== null) {
     document.body.className = s.bodyclass + " zad-body";
     var isNight = s.bodyclass.indexOf("nightMode") !== -1 || s.bodyclass.indexOf("night_mode") !== -1;
+    if (isNight) {
+      document.documentElement.classList.add("nightMode", "night_mode");
+      document.documentElement.style.setProperty("--zad-bg", "#1b1f23");
+      document.documentElement.style.setProperty("--zad-fg", "#f3f4f6");
+      document.documentElement.style.backgroundColor = "#1b1f23";
+      document.body.style.backgroundColor = "#1b1f23";
+    } else {
+      document.documentElement.classList.remove("nightMode", "night_mode");
+      document.documentElement.style.setProperty("--zad-bg", "#fffdf7");
+      document.documentElement.style.setProperty("--zad-fg", "#1f2937");
+      document.documentElement.style.backgroundColor = "#fffdf7";
+      document.body.style.backgroundColor = "#fffdf7";
+    }
     var qa = document.getElementById("zad-qa");
     if (qa) {
       if (isNight) {
@@ -80,11 +93,18 @@ CSS = """
   --zad-soft: #f4ecd2;
 }
 
-body.nightMode, body.night_mode {
-  --zad-bg: #1b1f23;
-  --zad-fg: #f3f4f6;
-  --zad-border: #3b4350;
-  --zad-soft: #262c33;
+:root.night-mode,
+:root.nightMode,
+:root.night_mode,
+:root[data-bs-theme="dark"],
+html.nightMode,
+html.night_mode,
+body.nightMode,
+body.night_mode {
+  --zad-bg: #1b1f23 !important;
+  --zad-fg: #f3f4f6 !important;
+  --zad-border: #3b4350 !important;
+  --zad-soft: #262c33 !important;
 }
 
 html, body {
@@ -94,9 +114,34 @@ html, body {
   height: 100%;
   overflow: hidden !important;
   background: var(--zad-bg) !important;
-  color: var(--zad-fg);
+  background-color: var(--zad-bg) !important;
+  color: var(--zad-fg) !important;
   direction: rtl;
   box-sizing: border-box;
+}
+
+html.nightMode, html.night_mode,
+body.nightMode, body.night_mode {
+  background: #1b1f23 !important;
+  background-color: #1b1f23 !important;
+  color: #f3f4f6 !important;
+}
+
+body.nightMode #zad-root,
+body.night_mode #zad-root,
+body.nightMode #zad-bar,
+body.night_mode #zad-bar {
+  background: #1b1f23 !important;
+  background-color: #1b1f23 !important;
+}
+
+body.nightMode #zad-scroll-area,
+body.night_mode #zad-scroll-area,
+body.nightMode #zad-qa,
+body.night_mode #zad-qa {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #f3f4f6 !important;
 }
 
 body {
@@ -304,12 +349,23 @@ body.night_mode svg.playImage path {
 /* ==========================================================================
    حل تضارب ألوان النصوص في الوضع الداكن (Dark Mode Conflict Resolution)
    ========================================================================== */
+/* إجبار خلفية نافذة الودجت في الوضع الداكن على الداكن الصريح */
+html.nightMode, html.night_mode,
 body.nightMode, body.night_mode,
 body.nightMode #zad-root, body.night_mode #zad-root,
+body.nightMode #zad-bar, body.night_mode #zad-bar {
+  background: #1b1f23 !important;
+  background-color: #1b1f23 !important;
+  color: #f3f4f6 !important;
+}
+
+/* بطاقة السؤال والجواب ومحتواها تكون شفافة فوق خلفية الودجت الداكنة */
 body.nightMode #zad-scroll-area, body.night_mode #zad-scroll-area,
 body.nightMode #zad-qa, body.night_mode #zad-qa,
-body.nightMode .card, body.night_mode .card {
+body.nightMode .card, body.night_mode .card,
+.nightMode .card, .night_mode .card {
   color: #f3f4f6 !important;
+  background: transparent !important;
   background-color: transparent !important;
 }
 
@@ -354,15 +410,24 @@ body.nightMode [style*="background-color: white" i],
 body.nightMode [style*="background-color:white" i],
 body.nightMode [style*="background-color: #fff" i],
 body.nightMode [style*="background-color:#fff" i],
+body.nightMode [style*="background-color: rgb(255" i],
 body.nightMode [style*="background: white" i],
 body.nightMode [style*="background:white" i],
 body.nightMode [style*="background: #fff" i],
 body.nightMode [style*="background:#fff" i],
+body.nightMode [style*="background: rgb(255" i],
 body.night_mode [style*="background-color: white" i],
 body.night_mode [style*="background-color:white" i],
 body.night_mode [style*="background-color: #fff" i],
-body.night_mode [style*="background-color:#fff" i] {
+body.night_mode [style*="background-color:#fff" i],
+body.night_mode [style*="background-color: rgb(255" i],
+body.night_mode [style*="background: white" i],
+body.night_mode [style*="background:white" i],
+body.night_mode [style*="background: #fff" i],
+body.night_mode [style*="background:#fff" i],
+body.night_mode [style*="background: rgb(255" i] {
   background-color: transparent !important;
+  background: transparent !important;
   color: #f3f4f6 !important;
 }
 

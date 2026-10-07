@@ -292,6 +292,66 @@ def _scope_decks(col: Collection, deck_name: str) -> list[int]:
     return top_level_decks(col)
 
 
+def tree_order_index_map(col: Collection) -> dict[int, int]:
+    """خريطة تعطي ترتيب كل رزمة في شجرة أنكي الأصلية من الأعلى للأسفل (0, 1, 2...)."""
+    tree = col.sched.deck_due_tree()
+    if not tree:
+        return {}
+    order_map: dict[int, int] = {}
+    idx = 0
+
+    def walk(node):
+        nonlocal idx
+        if node.deck_id != 0:
+            order_map[node.deck_id] = idx
+            idx += 1
+        for child in node.children:
+            walk(child)
+
+    walk(tree)
+    return order_map
+
+
+def expand_deck_candidates(
+    col: Collection, did: int
+) -> list[tuple[int, int, int, int, int]]:
+    """استخراج الرزم القابلة للدراسة: تفكيك الرزمة إلى فروعها بترتيب الشجرة إن كانت تضم فروعًا."""
+    tree = col.sched.deck_due_tree(did)
+    if not tree:
+        return []
+    if not tree.children:
+        n, l, r = int(tree.new_count), int(tree.learn_count), int(tree.review_count)
+        intra = int(getattr(tree, "intraday_learning", 0))
+        return [(did, n, l, r, intra)] if (n + l + r) > 0 else []
+
+    candidates: list[tuple[int, int, int, int, int]] = []
+    seen: set[int] = set()
+
+    def walk(node):
+        if not node.children:
+            n = int(getattr(node, "new_count", 0))
+            l = int(getattr(node, "learn_count", 0))
+            r = int(getattr(node, "review_count", 0))
+            intra = int(getattr(node, "intraday_learning", 0))
+            if (n + l + r) > 0 and node.deck_id not in seen:
+                seen.add(node.deck_id)
+                candidates.append((node.deck_id, n, l, r, intra))
+        else:
+            if getattr(node, "total_in_deck", 0) > 0 and node.deck_id not in seen:
+                n = int(getattr(node, "new_count", 0))
+                l = int(getattr(node, "learn_count", 0))
+                r = int(getattr(node, "review_count", 0))
+                intra = int(getattr(node, "intraday_learning", 0))
+                if (n + l + r) > 0:
+                    seen.add(node.deck_id)
+                    candidates.append((node.deck_id, n, l, r, intra))
+            for child in node.children:
+                walk(child)
+
+    walk(tree)
+    return candidates
+
+
 def fetch_next(
     col: Collection,
     deck_spec: Any = "",
@@ -303,7 +363,7 @@ def fetch_next(
     يدعم اختيار رزمة واحدة أو عدة رزم وترتيب الدراسة:
     - deck_by_deck: إنهاء الرزم بالتتابع حسب ترتيب القائمة (إنهاء الأولى ثم التالية)
     - mix: تنويع متوازن بين الرزم بنسبة المستحق (خلط ذكي ينشّط الذهن)
-    - anki: ترتيب أنكي الافتراضي
+    - anki: ترتيب أنكي الافتراضي (شجرة أنكي الأصلية من أول فرع لآخره)
     """
     if isinstance(order_mode, random.Random):
         rng = order_mode
@@ -314,13 +374,9 @@ def fetch_next(
     candidates: list[tuple[int, int, int, int, int]] = []
     if dids:
         for did in dids:
-            tree = col.sched.deck_due_tree(did)
-            if not tree:
-                continue
-            n, l, r = int(tree.new_count), int(tree.learn_count), int(tree.review_count)
-            intra = int(getattr(tree, "intraday_learning", 0))
-            if (n + l + r) > 0:
-                candidates.append((did, n, l, r, intra))
+            for cand in expand_deck_candidates(col, did):
+                if cand[0] not in [c[0] for c in candidates]:
+                    candidates.append(cand)
     else:
         tree = col.sched.deck_due_tree()
         if tree and (tree.new_count + tree.learn_count + tree.review_count > 0):
@@ -366,8 +422,13 @@ def fetch_next(
                 candidates, weights=[max(n + l + r, 1) for _, n, l, r, _ in candidates]
             )[0][0]
         order_pool = [chosen] + [c[0] for c in candidates if c[0] != chosen]
+    elif order_mode == "anki":
+        # في نمط ترتيب أنكي: إعادة ترتيب الرزم بدقة تامة طبقًا لموقعها في شجرة أنكي الأصلية (من أول فرع لآخره)
+        tree_map = tree_order_index_map(col)
+        sorted_candidates = sorted(candidates, key=lambda c: tree_map.get(c[0], 999999))
+        order_pool = [c[0] for c in sorted_candidates]
     else:
-        # deck_by_deck أو anki: يلتزم بترتيب القائمة بدقة رزمة تلو الأخرى
+        # deck_by_deck: يلتزم بترتيب القائمة المحددة من قِبل المستخدم
         order_pool = [c[0] for c in candidates]
 
     prev = int(col.decks.get_current_id())

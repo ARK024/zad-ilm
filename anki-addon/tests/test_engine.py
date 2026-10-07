@@ -224,6 +224,27 @@ class EngineTests(unittest.TestCase):
         self.assertIsNotNone(f_def2)
         self.assertEqual(col.decks.name(f_def2.card.did), d2_name)
 
+    def test_anki_tree_order_with_subdecks(self):
+        col = self.col
+        # زاد العلم تضم رزمًا فرعية، أولاها في شجرة أنكي "زاد العلم::أصول الفقه"
+        sub1 = "زاد العلم::أصول الفقه"
+        sub2 = "زاد العلم::فقه العبادات"
+
+        # في نمط anki مع عكس الترتيب المدخل [sub2, sub1]، يظل sub1 أولاً لأنه يسبق في شجرة أنكي الأصلية
+        f_anki = engine.fetch_next(col, [sub2, sub1], order_mode="anki")
+        self.assertIsNotNone(f_anki)
+        self.assertEqual(col.decks.name(f_anki.card.did), sub1)
+
+        # بينما في نمط deck_by_deck يلتزم بالترتيب المعكوس الذي وضعه المستخدم
+        f_prio = engine.fetch_next(col, [sub2, sub1], order_mode="deck_by_deck")
+        self.assertIsNotNone(f_prio)
+        self.assertEqual(col.decks.name(f_prio.card.did), sub2)
+
+        # واختيار الرزمة الأم "زاد العلم" في نمط anki يبدأ بأول رزمة فرعية في شجرتها
+        f_parent = engine.fetch_next(col, ["زاد العلم"], order_mode="anki")
+        self.assertIsNotNone(f_parent)
+        self.assertEqual(col.decks.name(f_parent.card.did), sub1)
+
     def test_mix_order_draws_from_both(self):
         col = self.col
         d1_name = "زاد العلم::العقيدة والتوحيد"

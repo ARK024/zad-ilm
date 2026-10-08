@@ -259,6 +259,58 @@ class EngineTests(unittest.TestCase):
                 seen_decks.add(col.decks.name(f.card.did))
         self.assertEqual(seen_decks, set(decks))
 
+    def test_anki_order_matches_native_scheduler_for_parent_with_subdecks(self):
+        col = self.col
+        p = col.decks.id("اختبار_رزمة_رئيسية")
+        s1 = col.decks.id("اختبار_رزمة_رئيسية::فرع_1")
+        s2 = col.decks.id("اختبار_رزمة_رئيسية::فرع_2")
+
+        m = col.models.by_name("Basic")
+        for i in range(2):
+            n = col.new_note(m)
+            n["Front"] = f"فرع_1_{i}"
+            col.add_note(n, s1)
+        for i in range(2):
+            n = col.new_note(m)
+            n["Front"] = f"فرع_2_{i}"
+            col.add_note(n, s2)
+
+        # جعل بطاقة في فرع_2 مراجعة مستحقة اليوم
+        cid = col.db.scalar("select id from cards where did=? limit 1", s2)
+        col.db.execute("update cards set type=2, queue=2, due=0 where id=?", cid)
+
+        # ضبط خيارات الرزمة: تقديم المراجعات على الجديدة (newMix = 1)
+        conf = col.decks.get_config(1)
+        conf["newMix"] = 1
+        col.decks.update_config(conf)
+
+        # مجدول أنكي الأصلي عند دراسة الرزمة الرئيسية
+        col.decks.select(p)
+        q_anki = col.sched.get_queued_cards()
+        card_anki_id = q_anki.cards[0].card.id
+
+        # الودجت في نمط anki
+        f_widget = engine.fetch_next(col, ["اختبار_رزمة_رئيسية"], order_mode="anki")
+        self.assertIsNotNone(f_widget)
+        # تطابق تام مع البطاقة المستحقة في أنكي (فرع 2) بدلاً من إجبار فرع 1
+        self.assertEqual(f_widget.card.id, card_anki_id)
+        self.assertEqual(col.decks.name(f_widget.card.did), "اختبار_رزمة_رئيسية::فرع_2")
+
+    def test_filter_root_deck_ids_and_counts(self):
+        col = self.col
+        dids = [col.decks.id("زاد العلم"), col.decks.id("زاد العلم::أصول الفقه")]
+        roots = engine.filter_root_deck_ids(col, dids)
+        self.assertEqual(roots, [col.decks.id("زاد العلم")])
+
+    def test_is_card_in_scope(self):
+        col = self.col
+        s1 = col.decks.id("زاد العلم::أصول الفقه")
+        other = col.decks.id("رزمة أخرى")
+        self.assertTrue(engine.is_card_in_scope(col, s1, ["زاد العلم"]))
+        self.assertTrue(engine.is_card_in_scope(col, s1, []))
+        self.assertFalse(engine.is_card_in_scope(col, other, ["زاد العلم"]))
+
+
 
 class PacingTests(unittest.TestCase):
     cfg = engine.merged_config({})

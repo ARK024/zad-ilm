@@ -189,6 +189,27 @@ class Controller:
         if not col or not w:
             tooltip("افتح ملفًا شخصيًا في أنكي أولًا")
             return
+
+        # إن كان مراجع أنكي مفتوحًا ويعرض بطاقة حاليًا ضمن النطاق، نعرض نفس البطاقة لضمان التطابق التام
+        if mw and mw.state == "review" and getattr(mw, "reviewer", None) and getattr(mw.reviewer, "card", None):
+            rev_card = mw.reviewer.card
+            if engine.is_card_in_scope(col, rev_card.did, self._deck_spec()):
+                v3_info = getattr(mw.reviewer, "_v3", None)
+                if v3_info and hasattr(v3_info, "top_card") and v3_info.top_card():
+                    queued_entry = v3_info.top_card()
+                    n, l, r = engine.counts(col, self._deck_spec())
+                    fetched = engine.Fetched(
+                        card=rev_card,
+                        queued=queued_entry,
+                        kind=int(queued_entry.queue),
+                        labels=list(col.sched.describe_next_states(v3_info.states)),
+                        new_count=n,
+                        learning_count=l,
+                        review_count=r,
+                    )
+                    self._show(fetched)
+                    return
+
         fetched = engine.fetch_next(col, self._deck_spec(), self._order_mode())
         if fetched is None:
             w.show_done("<b>🎉 أتممت كل المستحق اليوم</b><br>ما شاء الله، لا توجد بطاقات الآن.", False, 4000)
@@ -230,6 +251,11 @@ class Controller:
             self.next_due = time.time() + secs
             self.save_state()
             self._after_answer(secs, max(total - 1, 0))
+            if mw and mw.state == "review" and getattr(mw, "reviewer", None):
+                try:
+                    mw.reviewer.nextCard()
+                except Exception:
+                    pass
 
         def on_fail(e: Exception) -> None:
             w.state = "answer"

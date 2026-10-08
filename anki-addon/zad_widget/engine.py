@@ -266,6 +266,33 @@ def _due_total(q: QueuedCards) -> int:
     return q.new_count + q.learning_count + q.review_count
 
 
+def filter_root_deck_ids(col: Collection, dids: list[int]) -> list[int]:
+    """تصفية قائمة المعرفات لإزالة الفروع إذا كانت الرزمة الأصلية موجودة في القائمة."""
+    names = {did: col.decks.name(did) for did in dids}
+    roots: list[int] = []
+    for did in dids:
+        dname = names.get(did, "")
+        if not any(
+            dname != other_name and dname.startswith(f"{other_name}::")
+            for other_name in names.values()
+        ):
+            roots.append(did)
+    return roots
+
+
+def is_card_in_scope(col: Collection, card_did: int, deck_spec: Any) -> bool:
+    """هل تتبع البطاقة نطاق الرزم المحددة للدراسة؟"""
+    dids = resolve_deck_ids(col, deck_spec)
+    if not dids:
+        return True
+    card_deck_name = col.decks.name(card_did)
+    for did in dids:
+        dname = col.decks.name(did)
+        if card_did == did or card_deck_name == dname or card_deck_name.startswith(f"{dname}::"):
+            return True
+    return False
+
+
 def counts(col: Collection, deck_spec: Any = "") -> tuple[int, int, int]:
     """مجموع (جديدة، تعلّم، مراجعة) في نطاق الرزم المحددة دون تغيير الرزمة الحالية."""
     dids = resolve_deck_ids(col, deck_spec)
@@ -275,8 +302,9 @@ def counts(col: Collection, deck_spec: Any = "") -> tuple[int, int, int]:
             return 0, 0, 0
         return int(tree.new_count), int(tree.learn_count), int(tree.review_count)
 
+    roots = filter_root_deck_ids(col, dids)
     n = l = r = 0
-    for did in dids:
+    for did in roots:
         tree = col.sched.deck_due_tree(did)
         if tree:
             n += int(tree.new_count)
@@ -361,9 +389,9 @@ def fetch_next(
     """البطاقة التالية بحسب طابور أنكي الأصلي (أو None إن انتهى المستحق).
 
     يدعم اختيار رزمة واحدة أو عدة رزم وترتيب الدراسة:
-    - deck_by_deck: إنهاء الرزم بالتتابع حسب ترتيب القائمة (إنهاء الأولى ثم التالية)
-    - mix: تنويع متوازن بين الرزم بنسبة المستحق (خلط ذكي ينشّط الذهن)
-    - anki: ترتيب أنكي الافتراضي (شجرة أنكي الأصلية من أول فرع لآخره)
+    - anki: ترتيب أنكي الافتراضي (جدولة أنكي الأصلية بدقة، مع احترام شجرة الرزم وأولويات المراجعة)
+    - deck_by_deck: إنهاء الرزم بالتتابع حسب ترتيب القائمة المحددة
+    - mix: تنويع متوازن بين الرزم وفروعها بنسبة المستحق (خلط ذكي ينشّط الذهن)
     """
     if isinstance(order_mode, random.Random):
         rng = order_mode
@@ -371,47 +399,60 @@ def fetch_next(
     rng = rng or random
     dids = resolve_deck_ids(col, deck_spec)
 
-    candidates: list[tuple[int, int, int, int, int]] = []
-    if dids:
-        for did in dids:
-            for cand in expand_deck_candidates(col, did):
-                if cand[0] not in [c[0] for c in candidates]:
-                    candidates.append(cand)
-    else:
-        tree = col.sched.deck_due_tree()
-        if tree and (tree.new_count + tree.learn_count + tree.review_count > 0):
-            candidates = [
-                (
-                    int(c.deck_id),
-                    int(c.new_count),
-                    int(c.learn_count),
-                    int(c.review_count),
-                    int(getattr(c, "intraday_learning", 0)),
-                )
-                for c in tree.children
-                if (c.new_count + c.learn_count + c.review_count) > 0
-            ]
-            if not candidates:
-                candidates = [
-                    (
-                        int(col.decks.get_current_id()),
-                        int(tree.new_count),
-                        int(tree.learn_count),
-                        int(tree.review_count),
-                        int(getattr(tree, "intraday_learning", 0)),
-                    )
-                ]
-
-    if not candidates:
+    total_n, total_lrn, total_rev = counts(col, deck_spec)
+    if (total_n + total_lrn + total_rev) == 0:
         return None
 
-    total_n = sum(n for _, n, _, _, _ in candidates)
-    total_lrn = sum(l for _, _, l, _, _ in candidates)
-    total_rev = sum(r for _, _, _, r, _ in candidates)
-
     order_pool: list[int] = []
+
     if order_mode == "mix":
-        # في نمط التنويع: بطاقات التعلّم المستحقة الآن لها الأسبقية بالقرعة الموزونة
+        # في نمط التنويع: نجمع الرزم القابلة للدراسة ونخلط بينها بنسبة المستحق
+        candidates: list[tuple[int, int, int, int, int]] = []
+        if dids:
+            for did in dids:
+                for cand in expand_deck_candidates(col, did):
+                    if cand[0] not in [c[0] for c in candidates]:
+                        candidates.append(cand)
+            if not candidates:
+                for did in dids:
+                    tree = col.sched.deck_due_tree(did)
+                    if tree and (tree.new_count + tree.learn_count + tree.review_count > 0):
+                        candidates.append((
+                            did,
+                            int(tree.new_count),
+                            int(tree.learn_count),
+                            int(tree.review_count),
+                            int(getattr(tree, "intraday_learning", 0)),
+                        ))
+        else:
+            tree = col.sched.deck_due_tree()
+            if tree and (tree.new_count + tree.learn_count + tree.review_count > 0):
+                candidates = [
+                    (
+                        int(c.deck_id),
+                        int(c.new_count),
+                        int(c.learn_count),
+                        int(c.review_count),
+                        int(getattr(c, "intraday_learning", 0)),
+                    )
+                    for c in tree.children
+                    if (c.new_count + c.learn_count + c.review_count) > 0
+                ]
+                if not candidates:
+                    candidates = [
+                        (
+                            int(col.decks.get_current_id()),
+                            int(tree.new_count),
+                            int(tree.learn_count),
+                            int(tree.review_count),
+                            int(getattr(tree, "intraday_learning", 0)),
+                        )
+                    ]
+
+        if not candidates:
+            return None
+
+        # بطاقات التعلّم المستحقة الآن لها الأسبقية بالقرعة الموزونة
         learning_pool = [c for c in candidates if c[4] > 0]
         if learning_pool:
             chosen = rng.choices(
@@ -422,14 +463,21 @@ def fetch_next(
                 candidates, weights=[max(n + l + r, 1) for _, n, l, r, _ in candidates]
             )[0][0]
         order_pool = [chosen] + [c[0] for c in candidates if c[0] != chosen]
+
     elif order_mode == "anki":
-        # في نمط ترتيب أنكي: إعادة ترتيب الرزم بدقة تامة طبقًا لموقعها في شجرة أنكي الأصلية (من أول فرع لآخره)
+        # في نمط ترتيب أنكي: احترام شجرة أنكي وجدولتها الأصلية بدقة تامة
+        # لا نجزئ الرزم المختارة بل نترك لمجدول أنكي V3 اختيار البطاقة المستحقة (مراجعات، أولويات، حدود)
         tree_map = tree_order_index_map(col)
-        sorted_candidates = sorted(candidates, key=lambda c: tree_map.get(c[0], 999999))
-        order_pool = [c[0] for c in sorted_candidates]
+        target_dids = dids if dids else top_level_decks(col)
+        order_pool = sorted(target_dids, key=lambda d: tree_map.get(d, 999999))
+
     else:
-        # deck_by_deck: يلتزم بترتيب القائمة المحددة من قِبل المستخدم
-        order_pool = [c[0] for c in candidates]
+        # deck_by_deck: يلتزم بترتيب القائمة المحددة من قِبل المستخدم بدقة
+        if dids:
+            order_pool = list(dids)
+        else:
+            tree_map = tree_order_index_map(col)
+            order_pool = sorted(top_level_decks(col), key=lambda d: tree_map.get(d, 999999))
 
     prev = int(col.decks.get_current_id())
     undo_before = col.undo_status()
